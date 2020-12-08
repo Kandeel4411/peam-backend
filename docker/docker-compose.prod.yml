@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  peam_backend:
+    image: peam_backend:prod
+    container_name: peam_backend
+    restart: always
+    ports:
+      - 8000:8000
+    environment:
+      - DEBUG=False

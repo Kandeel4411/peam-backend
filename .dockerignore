@@ -1,0 +1,17 @@
+# editor
+venv
+linux-venv
+.idea
+.vscode
+
+# db/etc
+*.sqlite3
+*.md
+Dockerfile
+docker-compose*
+
+# Python specific
+*.egg-info
+*.egg/
+**/__pycache__
+**/*.pyc
