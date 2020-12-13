@@ -7,7 +7,7 @@ ENV PYTHONFAULTHANDLER 1
 ENV PYTHONDONTWRITEBYTECODE 1
 # Turns off buffering for easier container logging
 ENV PYTHONUNBUFFERED 1
-# ENV PIP_NO_BINARY psycopg2
+ENV PIP_NO_BINARY psycopg2
 
 # --home DIR                Home directory
 # --gid GRP                 Add user to existing group
@@ -30,10 +30,10 @@ RUN adduser --system \
 ########################################
 FROM base as dependencies
 
-# # psycopg2 building requirements
-# RUN apt-get install -y --no-install-recommends libpq-dev gcc python3-dev
-# # Error checking for psycopg2
-# RUN pg_config --version
+# psycopg2 building requirements
+RUN apt-get install -y --no-install-recommends libpq-dev gcc python3-dev
+# Error checking for psycopg2
+RUN pg_config --version
 
 RUN python3 -m venv /opt/venv
 # Make sure we use the virtualenv:
@@ -64,8 +64,8 @@ RUN poetry install --no-interaction --no-ansi && poetry debug
 ####################
 FROM base as dev
 
-# # Runtime dependency requirement for psycop2
-# RUN apt-get install -y --no-install-recommends libpq5
+# Runtime dependency requirement for psycop2
+RUN apt-get install -y --no-install-recommends libpq5
 RUN apt-get purge -y --auto-remove \
     && rm -rf /var/lib/apt/lists/*
 
@@ -94,8 +94,8 @@ ENTRYPOINT ["/entrypoint.sh"]
 #####################
 FROM base as prod
 
-# # Runtime dependency requirement for psycop2
-# RUN apt-get install -y --no-install-recommends libpq5
+# Runtime dependency requirement for psycop2
+RUN apt-get install -y --no-install-recommends libpq5
 RUN apt-get purge -y --auto-remove \
     && rm -rf /var/lib/apt/lists/*
 
