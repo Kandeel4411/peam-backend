@@ -24,7 +24,7 @@ services:
     image: postgres:12.3
     container_name: postgres
     volumes:
-      - local_postgres_data:/var/lib/postgresql/data:Z'
+      - local_postgres_data:/var/lib/postgresql/data:Z
     environment:
       - POSTGRES_HOST=${POSTGRES_HOST}
       - POSTGRES_PORT=${POSTGRES_PORT}

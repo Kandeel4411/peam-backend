@@ -35,17 +35,14 @@ jobs:
       - name: Checkout Code Repository
         uses: actions/checkout@v2
 
-      - name: Changing ownership
-        run:  sudo chown -R 3000 .
-
       - name: Build the Stack
-        run:  make build
+        run:  make COMPOSE_FILE="docker-compose.ci.yml" build
 
       - name: Running DB
-        run:  make db
+        run:  make COMPOSE_FILE="docker-compose.ci.yml" db
 
       - name: Make DB Migrations
-        run:  make migrate
+        run:  make COMPOSE_FILE="docker-compose.ci.yml" migrate
 
       - name: Run Django Tests
-        run:  make test
+        run:  make COMPOSE_FILE="docker-compose.ci.yml" test
