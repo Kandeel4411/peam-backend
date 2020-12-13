@@ -46,7 +46,8 @@ RUN pip install poetry
 COPY poetry.lock pyproject.toml ./
 
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi --no-dev \
+    && poetry export -f requirements.txt \
+    | pip install -r /dev/stdin  \
     && poetry debug
 
 
@@ -54,7 +55,9 @@ RUN poetry config virtualenvs.create false \
 # Helper image for development dependencies #
 #############################################
 FROM dependencies as dev-dependencies
-RUN poetry install --no-interaction --no-ansi && poetry debug
+RUN poetry export -f requirements.txt --dev \
+    | pip install -r /dev/stdin  \
+    && poetry debug
 
 
 
@@ -85,7 +88,7 @@ RUN chmod +x docker/.dev/start.sh
 RUN chown -R newuser /app
 USER newuser
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["./docker/entrypoint.sh"]
 
 
 
@@ -115,4 +118,4 @@ RUN chmod +x docker/.prod/start.sh
 RUN chown -R newuser /app
 USER newuser
 
-ENTRYPOINT ["/entrypoint.sh"]
+ENTRYPOINT ["./docker/entrypoint.sh"]

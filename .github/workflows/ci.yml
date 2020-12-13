@@ -34,8 +34,15 @@ jobs:
 
       - name: Checkout Code Repository
         uses: actions/checkout@v2
+
+      - name: Changing ownership
+        run:  sudo chown -R 3000 .
+
       - name: Build the Stack
         run:  make build
+
+      - name: Running DB
+        run:  make db
 
       - name: Make DB Migrations
         run:  make migrate

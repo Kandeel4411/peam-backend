@@ -3,10 +3,11 @@ from pathlib import Path
 from .base import *  # noqa
 from .base import env
 
-ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent.parent
+ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent.parent.parent
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=True)
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
+    print(ROOT_DIR)
     env.read_env(str(ROOT_DIR / ".env.dev"))
 
 DEBUG = True
