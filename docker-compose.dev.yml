@@ -7,7 +7,7 @@ services:
   peam_backend:
     image: peam_backend:dev
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
       target: dev
     container_name: peam_backend
