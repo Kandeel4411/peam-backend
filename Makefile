@@ -1,4 +1,4 @@
-DOCKER_COMPOSE := "docker/docker-compose.dev.yml"
+DOCKER_COMPOSE := "docker-compose.dev.yml"
 CONTAINER_NAME := "peam_backend"
 
 # Building and running
@@ -18,8 +18,21 @@ build:
 stop:
 	docker-compose -f ${DOCKER_COMPOSE} down
 
+.PHONY: db
+db:
+	docker-compose -f ${DOCKER_COMPOSE} up -d postgres
+
+.PHONY: db-down
+db-down:
+	docker-compose -f ${DOCKER_COMPOSE} down postgres
+
 
 # Utilities
+.PHONY: test
+test:
+	export DJANGO_SETTINGS_MODULE=core.settings.test && \
+	docker-compose -f ${DOCKER_COMPOSE} run ${CONTAINER_NAME} python src/manage.py test
+
 .PHONY: lint
 lint:
 	docker-compose -f ${DOCKER_COMPOSE} run ${CONTAINER_NAME} flake8 .

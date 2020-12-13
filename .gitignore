@@ -58,6 +58,9 @@ target/
 
 # DotEnv configuration
 .env
+.env.prod
+.env.dev
+
 
 # Database
 *.db
@@ -86,4 +89,5 @@ target/
 # exclude data, models and venv from source control by default
 venv/
 logs/
+staticfiles/
 linux-venv/

@@ -1,0 +1,28 @@
+version: "3"
+
+volumes:
+  local_postgres_data: {}
+
+services:
+  peam_backend:
+    image: peam_backend:dev
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: dev
+    container_name: peam_backend
+    command: ./docker/.dev/start.sh
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env.dev
+    volumes:
+      - .:/app
+
+  postgres:
+    image: postgres:12.3
+    container_name: postgres
+    volumes:
+      - local_postgres_data:/var/lib/postgresql/data:Z
+    env_file:
+      - ./.env.dev

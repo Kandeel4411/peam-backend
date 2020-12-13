@@ -80,11 +80,12 @@ WORKDIR /app
 COPY . /app
 
 RUN chmod +x docker/entrypoint.sh
+RUN chmod +x docker/.dev/start.sh
 
 RUN chown -R newuser /app
 USER newuser
 
-CMD ["/bin/bash", "-c",  "cd src && ../docker/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
 
 
 
@@ -109,8 +110,9 @@ WORKDIR /app
 COPY . /app
 
 RUN chmod +x docker/entrypoint.sh
+RUN chmod +x docker/.prod/start.sh
 
 RUN chown -R newuser /app
 USER newuser
 
-CMD ["/bin/bash", "-c",  "cd src && ../docker/entrypoint.sh"]
+ENTRYPOINT ["/entrypoint.sh"]
