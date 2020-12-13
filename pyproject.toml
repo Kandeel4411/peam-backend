@@ -7,11 +7,35 @@ authors = ["abdelrahman kandil <abdelrahmankandil@hotmail.com>"]
 [tool.poetry.dependencies]
 python = "^3.8"
 Django = "^3.1.4"
+djangorestframework = "^3.12.2"
+django-cors-headers = "^3.5.0"
+django-environ = "^0.4.5"
+whitenoise = "^5.2.0"
+psycopg2 = "^2.8.6"
 
 [tool.poetry.dev-dependencies]
 flake8 = "^3.8.4"
-autopep8 = "^1.5.4"
+coverage = "^5.3"
+black = "^20.8b1"
+pre-commit = "^2.9.3"
+mypy = "^0.790"
+django-extensions = "^3.1.0"
+factory-boy = "^3.1.0"
 
+[tool.black]
+line-length = 120
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \__pycache__
+  | \.tox
+  | \migrations
+  | \venv
+  | \linux-venv
+)/
+'''
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
