@@ -7,7 +7,6 @@ ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent.parent.parent
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=True)
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
-    print(ROOT_DIR)
     env.read_env(str(ROOT_DIR / ".env.dev"))
 
 DEBUG = True
@@ -18,11 +17,21 @@ SECRET_KEY = env(
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
 
 
+# django-rest-framework
+# -------------------------------------------------------------------------------
+# https://www.django-rest-framework.org/api-guide/settings/
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": (
+        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework.authentication.TokenAuthentication",
+    ),
+    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.AllowAny",),
+}
+
 # DATABASES
 # ------------------------------------------------------------------------------
 # https://docs.djangoproject.com/en/dev/ref/settings/#databases
 DATABASES = {"default": env.db("DATABASE_URL")}
-DATABASES["default"]["ATOMIC_REQUESTS"] = True
 
 # CACHES
 # ------------------------------------------------------------------------------

@@ -43,17 +43,23 @@ DJANGO_APPS = [
     "django.contrib.sites",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "grappelli",  # Third-party - must be installed before django.contrib.admin
     "django.contrib.admin",
     "django.forms",
 ]
+
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "corsheaders",
+    "drf_yasg",
 ]
 
 LOCAL_APPS = [
-    # "users.apps.UsersConfig",
+    "users.apps.UsersConfig",
+    "courses.apps.CoursesConfig",
+    "projects.apps.ProjectsConfig",
+    "core.apps.CoreConfig",
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -65,7 +71,7 @@ AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
 ]
 # # https://docs.djangoproject.com/en/dev/ref/settings/#auth-user-model
-# AUTH_USER_MODEL = "users.User"
+AUTH_USER_MODEL = "users.User"
 # # https://docs.djangoproject.com/en/dev/ref/settings/#login-redirect-url
 # LOGIN_REDIRECT_URL = "users:redirect"
 # # https://docs.djangoproject.com/en/dev/ref/settings/#login-url
