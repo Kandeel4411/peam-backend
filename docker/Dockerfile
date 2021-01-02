@@ -16,11 +16,15 @@ ENV PIP_NO_BINARY psycopg2
 # --shell SHELL             Login shell
 # --disabled-login          Don't assign a password
 # --no-create-home          Don't create home directory
-RUN adduser --system \
+RUN addgroup \
+    --system django \
+    --gid 5000 \
+    && adduser --system \
     --disabled-password \
     --no-create-home \
     --shell /bin/false \
     --uid 3000 \
+    --ingroup django\
     newuser
 
 
@@ -85,7 +89,7 @@ COPY . /app
 RUN chmod +x docker/entrypoint.sh
 RUN chmod +x docker/.dev/start.sh
 
-RUN chown -R newuser /app
+RUN chown -R newuser:django /app
 USER newuser
 
 ENTRYPOINT ["./docker/entrypoint.sh"]
@@ -115,7 +119,7 @@ COPY . /app
 RUN chmod +x docker/entrypoint.sh
 RUN chmod +x docker/.prod/start.sh
 
-RUN chown -R newuser /app
+RUN chown -R newuser:django /app
 USER newuser
 
 ENTRYPOINT ["./docker/entrypoint.sh"]
