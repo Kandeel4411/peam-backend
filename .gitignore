@@ -90,4 +90,5 @@ target/
 venv/
 logs/
 staticfiles/
+media/
 linux-venv/

@@ -1,7 +1,8 @@
 version: "3"
 
 volumes:
-  local_postgres_data: {}
+  local_postgres_data:
+    external: false
 
 services:
   peam_backend:
@@ -26,11 +27,11 @@ services:
   postgres:
     image: postgres:12.3
     container_name: postgres
+    ports:
+      - "127.0.0.1:5243:5432"
     volumes:
       - local_postgres_data:/var/lib/postgresql/data:Z
     environment:
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
       - POSTGRES_DB=peam_backend
       - POSTGRES_USER=username
       - POSTGRES_PASSWORD=password
