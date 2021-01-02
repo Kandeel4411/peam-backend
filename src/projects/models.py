@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -6,8 +8,9 @@ from users.models import Student
 
 
 class Team(models.Model):
+    uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=50, blank=False, null=False, verbose_name=_("Name"))
-    requirement = models.ForeignKey(ProjectRequirement, on_delete=models.CASCADE)
+    requirement = models.ForeignKey(ProjectRequirement, to_field="uid", on_delete=models.CASCADE)
 
     class Meta:
         managed = True
@@ -20,8 +23,9 @@ class Team(models.Model):
 
 
 class TeamMember(models.Model):
-    student = models.ForeignKey(Student, on_delete=models.CASCADE)
-    team = models.ForeignKey(Team, on_delete=models.CASCADE)
+    uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    student = models.ForeignKey(Student, to_field="uid", on_delete=models.CASCADE, related_name="team")
+    team = models.ForeignKey(Team, to_field="uid", on_delete=models.CASCADE, related_name="member")
 
     class Meta:
         managed = True

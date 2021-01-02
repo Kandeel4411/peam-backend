@@ -1,3 +1,5 @@
+import uuid
+
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -8,6 +10,7 @@ from users.models import Teacher
 
 
 class Course(models.Model):
+    uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=50, unique=True, blank=False, null=False, verbose_name=_("Title"))
     code = models.CharField(max_length=10, unique=True, blank=False, null=False, verbose_name=_("Code"))
     description = models.CharField(max_length=300, blank=True, null=False, verbose_name=_("Description"))
@@ -22,8 +25,9 @@ class Course(models.Model):
 
 
 class CourseTeacher(models.Model):
-    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    teacher = models.ForeignKey(Teacher, to_field="uid", on_delete=models.CASCADE)
+    course = models.ForeignKey(Course, to_field="uid", on_delete=models.CASCADE, related_name="teacher")
 
     class Meta:
         managed = True
@@ -36,7 +40,8 @@ class CourseTeacher(models.Model):
 
 
 class ProjectRequirement(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+    uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(Course, to_field="uid", on_delete=models.CASCADE, related_name="requirement")
     title = models.CharField(max_length=50, unique=True, blank=False, null=False, verbose_name=_("Title"))
     description = models.CharField(max_length=300, blank=True, null=False, verbose_name=_("Description"))
     to_dt = models.DateTimeField(blank=False, verbose_name=_("Deadline"))
@@ -54,8 +59,9 @@ class ProjectRequirement(models.Model):
 
 
 class CourseAttachment(models.Model):
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-    attachment = models.ForeignKey(Attachment, on_delete=models.CASCADE)
+    uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    course = models.ForeignKey(Course, to_field="uid", on_delete=models.CASCADE, related_name="attachment")
+    attachment = models.ForeignKey(Attachment, to_field="uid", on_delete=models.CASCADE)
 
     class Meta:
         managed = True
