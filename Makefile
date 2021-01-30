@@ -1,4 +1,4 @@
-COMPOSE_FILE := "docker-compose.dev.yml"
+COMPOSE_FILE := "docker-compose.ci.yml"
 CONTAINER_NAME := "peam_backend"
 
 # Building and running
@@ -27,7 +27,11 @@ db:
 .PHONY: test
 test:
 	docker-compose -f ${COMPOSE_FILE} run ${CONTAINER_NAME} /bin/bash -c "export DJANGO_SETTINGS_MODULE=core.settings.test && \
-	python src/manage.py test"
+	pytest"
+
+.PHONY: format
+format:
+	docker-compose -f ${COMPOSE_FILE} run ${CONTAINER_NAME} black .
 
 .PHONY: lint
 lint:
@@ -50,3 +54,7 @@ shell:
 .PHONY: bash
 bash:
 	docker-compose -f ${COMPOSE_FILE} run ${CONTAINER_NAME} /bin/bash
+
+.PHONY: fmtlint
+fmtlint:
+	docker-compose -f ${COMPOSE_FILE} run ${CONTAINER_NAME} black . && flake8 .
