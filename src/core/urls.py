@@ -19,7 +19,7 @@ schema_view = get_schema_view(
 )
 
 api_patterns = [
-    path("api/docs", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
+    path("api/", include("courses.urls")),
     path(
         "api/auth/password/reset/confirm/<slug:uidb64>/<slug:token>/",
         PasswordResetConfirmView.as_view(),
@@ -37,6 +37,8 @@ api_patterns = [
 
 urlpatterns = (
     [
+        # Api Doc homepage
+        path("", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
         path("", include(api_patterns)),
         path("grappelli/", include("grappelli.urls")),  # grappelli URLS
         path(settings.ADMIN_URL, admin.site.urls),
