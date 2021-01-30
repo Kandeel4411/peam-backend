@@ -27,7 +27,7 @@ db:
 .PHONY: test
 test:
 	docker-compose -f ${COMPOSE_FILE} run ${CONTAINER_NAME} /bin/bash -c "export DJANGO_SETTINGS_MODULE=core.settings.test && \
-	pytest"
+	pytest src"
 
 .PHONY: format
 format:
