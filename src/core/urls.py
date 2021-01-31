@@ -19,20 +19,20 @@ schema_view = get_schema_view(
 )
 
 api_patterns = [
-    path("api/", include("courses.urls")),
+    path("api/v1/", include("courses.urls")),
     path(
-        "api/auth/password/reset/confirm/<slug:uidb64>/<slug:token>/",
+        "api/v1/auth/password/reset/confirm/<slug:uidb64>/<slug:token>/",
         PasswordResetConfirmView.as_view(),
         name="password_reset_confirm",
     ),
-    path("api/auth/", include("dj_rest_auth.urls"), name="rest_auth"),
+    path("api/v1/auth/", include("dj_rest_auth.urls"), name="rest_auth"),
     path(
-        "api/signup/account-confirm-email/<str:key>/",
+        "api/v1/signup/account-confirm-email/<str:key>/",
         ConfirmEmailView.as_view(),
         name="account_email_verification_done",
     ),
-    path("api/signup/", include("dj_rest_auth.registration.urls"), name="rest_signup"),
-    path("api/signup/account-confirm-email/", VerifyEmailView.as_view(), name="account_email_verification_sent"),
+    path("api/v1/signup/", include("dj_rest_auth.registration.urls"), name="rest_signup"),
+    path("api/v1/signup/account-confirm-email/", VerifyEmailView.as_view(), name="account_email_verification_sent"),
 ]
 
 urlpatterns = (

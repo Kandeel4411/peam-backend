@@ -37,6 +37,8 @@ exclude = '/(\.git|\.hg|\.mypy_cache|__pycache__|\.tox|migrations|venv|linux-ven
 DJANGO_SETTINGS_MODULE = "core.settings.test"
 norecursedirs = ["*.egg", ".*", "venv", "__pycache__"]
 python_files = "test_*.py"
+# addopts = "-p no:warnings"
+
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

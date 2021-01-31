@@ -18,6 +18,9 @@ class CourseView(GenericAPIView):
     Base view for courses.
     """
 
+    queryset = Course.objects.all()
+    serializer_class = CourseSerializer
+
     @swagger_auto_schema(request_body=CourseSerializer(), responses={status.HTTP_201_CREATED: CourseSerializer()})
     def post(self, request, *args, **kwargs) -> Response:
         """

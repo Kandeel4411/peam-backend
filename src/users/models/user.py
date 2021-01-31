@@ -12,6 +12,7 @@ class User(AbstractUser):
 
     TEACHER = "Teacher"
     STUDENT = "Student"
+    ANON = "Anon"
     USER_ROLE_CHOICES = (
         (
             TEACHER,
