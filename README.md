@@ -60,17 +60,18 @@ Backend repository for the Peam app.
 If developing locally, you need to create a `.env.dev` file similar to [.env.dev.example](.env.dev.example) and overriding the default values appropriately.
 
 ```bash
+## In project root directory... ##
 
 # Run local development server
 poetry run python src/manage.py runserver
 
 # Run tests
-poetry run pytest
+poetry run pytest src
 
 # Run formatting and linting
-poetry run black .
+poetry run black src
 # the next line shouldn't output anything to the terminal if it passes
-poetry run flake8
+poetry run flake8 src
 
 ```
 
