@@ -15,20 +15,20 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     """
 
     @classmethod
-    def get_token(cls, user):
+    def get_token(cls, user: User) -> dict:
         """
         Overriding get_tokens for adding custom claims.
         """
-        token = super().get_token(user)
+        token: dict = super().get_token(user)
 
         token["username"] = user.username
 
         if hasattr(user, "as_student"):
-            token["role"] = "student"
+            token["role"] = User.STUDENT
         elif hasattr(user, "as_teacher"):
-            token["role"] = "teacher"
+            token["role"] = User.TEACHER
         else:
-            token["role"] = "anon"
+            token["role"] = User.ANON
 
         return token
 
@@ -38,9 +38,9 @@ class CustomRegisterSerializer(RegisterSerializer):
 
     # Define transaction.atomic to rollback the save operation in case of error
     @transaction.atomic
-    def save(self, request):
-        user = super().save(request)
-        role = self.data.get("role")
+    def save(self, request) -> User:
+        user: User = super().save(request)
+        role: str = self.data.get("role")
 
         if role == User.STUDENT:
             Student.objects.create(user=user)

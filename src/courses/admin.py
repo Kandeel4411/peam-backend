@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .models import Course, ProjectRequirement
-from .inlines import CourseAttachmentInline, CourseTeacherInline
+from .inlines import CourseAttachmentInline, CourseTeacherInline, ProjectRequirementAttachmentInline
 
 
 @admin.register(Course)
@@ -11,4 +11,4 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(ProjectRequirement)
 class ProjectRequirementAdmin(admin.ModelAdmin):
-    pass
+    inlines = [ProjectRequirementAttachmentInline]

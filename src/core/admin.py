@@ -1,13 +1,8 @@
 from django.contrib import admin
 
-from .models import Notification, Attachment
+from .models import Notification
 
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(Attachment)
-class AttachmentAdmin(admin.ModelAdmin):
     pass
