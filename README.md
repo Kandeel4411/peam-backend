@@ -17,6 +17,7 @@ Backend repository for the Peam app.
 
 - [Install Make](http://gnuwin32.sourceforge.net/packages/make.htm) if you're on Windows. OSX already has it installed. Linux will tell you how to install it (i.e., `sudo apt-get install make`)
 - Run `make build`
+- Run `make create-db`
 - Run `make run`
 - Navigate to [http://localhost:8000/](http://localhost:8000/) to view the API documentation.
 
@@ -61,6 +62,9 @@ If developing locally, you need to create a `.env.dev` file similar to [.env.dev
 
 ```bash
 ## In project root directory... ##
+
+# Run migrate to create db / apply migrations
+poetry run python src/manage.py migrate
 
 # Run local development server
 poetry run python src/manage.py runserver

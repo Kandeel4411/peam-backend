@@ -3,8 +3,6 @@ from factory.django import DjangoModelFactory
 from allauth.account.models import EmailAddress
 from django.contrib.auth import get_user_model
 
-from users.models import Teacher, Student
-
 User = get_user_model()
 
 
@@ -35,17 +33,3 @@ class UserFactory(DjangoModelFactory):
         )
 
         return user
-
-
-class TeacherFactory(DjangoModelFactory):
-    class Meta:
-        model = Teacher
-
-    user: User = factory.SubFactory(UserFactory)
-
-
-class StudentFactory(DjangoModelFactory):
-    class Meta:
-        model = Student
-
-    user: User = factory.SubFactory(UserFactory)
