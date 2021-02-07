@@ -54,7 +54,6 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "users.apps.UsersConfig",
     "courses.apps.CoursesConfig",
-    "projects.apps.ProjectsConfig",
     "core.apps.CoreConfig",
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -125,7 +124,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "AUDIENCE": None,
     "ISSUER": None,
-    "USER_ID_FIELD": "id",
+    "USER_ID_FIELD": "uid",
     "USER_ID_CLAIM": "user_id",
     "JTI_CLAIM": "jwt_id",
     "TOKEN_TYPE_CLAIM": "jwt_type",

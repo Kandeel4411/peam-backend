@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import CourseAttachment, CourseTeacher, ProjectRequirementAttachment
+from .models import CourseAttachment, CourseTeacher, ProjectRequirementAttachment, CourseStudent, TeamStudent
 
 
 class ProjectRequirementAttachmentInline(admin.TabularInline):
@@ -25,3 +25,19 @@ class CourseTeacherInline(admin.TabularInline):
     """
 
     model = CourseTeacher
+
+
+class CourseStudentInline(admin.TabularInline):
+    """
+    A class for inlining course students
+    """
+
+    model = CourseStudent
+
+
+class TeamStudentInline(admin.TabularInline):
+    """
+    A class for inlining team students
+    """
+
+    model = TeamStudent

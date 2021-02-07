@@ -19,7 +19,9 @@ class Notification(models.Model):
     link = models.URLField(blank=True, null=False, verbose_name=_("Link"))
     type = models.CharField(max_length=20, blank=False, null=False, verbose_name=_("Type"))
     unread = models.BooleanField(default=False, null=False, blank=True, verbose_name=_("Unread"))
-    created_at = models.DateTimeField(default=timezone.now, blank=True, verbose_name=_("Created At"))
+    created_at = models.DateTimeField(
+        default=timezone.now, blank=True, null=False, editable=False, verbose_name=_("Created At")
+    )
 
     class Meta:
         managed = True

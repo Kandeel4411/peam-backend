@@ -2,8 +2,6 @@ from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
-from .models import Student, Teacher
-
 User = get_user_model()
 
 
@@ -21,13 +19,3 @@ class UserAdmin(BaseUserAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-
-@admin.register(Student)
-class StudentAdmin(admin.ModelAdmin):
-    pass
-
-
-@admin.register(Teacher)
-class TeacherAdmin(admin.ModelAdmin):
-    pass
