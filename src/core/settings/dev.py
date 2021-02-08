@@ -17,6 +17,9 @@ SECRET_KEY = env(
 )
 ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
 
+# django-cors-headers
+# ------------------------------------------------------------------------------
+CORS_ALLOW_ALL_ORGINS = True
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
@@ -83,7 +86,7 @@ SIMPLE_JWT = {
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "AUDIENCE": None,
     "ISSUER": None,
-    "USER_ID_FIELD": "id",
+    "USER_ID_FIELD": "uid",
     "USER_ID_CLAIM": "user_id",
     "JTI_CLAIM": "jwt_id",
     "TOKEN_TYPE_CLAIM": "jwt_type",
