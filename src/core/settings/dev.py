@@ -19,7 +19,7 @@ ALLOWED_HOSTS = ["localhost", "0.0.0.0", "127.0.0.1"]
 
 # django-cors-headers
 # ------------------------------------------------------------------------------
-CORS_ALLOW_ALL_ORGINS = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------

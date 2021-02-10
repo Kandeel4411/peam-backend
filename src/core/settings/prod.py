@@ -17,7 +17,7 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["0.0.0.0", "localhost"
 
 # django-cors-headers
 # ------------------------------------------------------------------------------
-CORS_ALLOW_ALL_ORGINS = False
+CORS_ALLOW_ALL_ORIGINS = False
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
