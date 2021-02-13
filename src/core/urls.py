@@ -1,12 +1,56 @@
 from django.contrib import admin
 from django.conf import settings
+from django.views.generic.base import TemplateView
 from django.conf.urls.static import static
 from django.urls import path, include
 
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from dj_rest_auth.views import PasswordResetConfirmView
-from dj_rest_auth.registration.views import VerifyEmailView, ConfirmEmailView
+from dj_rest_auth.registration.views import RegisterView, VerifyEmailView, ConfirmEmailView
+from dj_rest_auth.views import (
+    LogoutView,
+    PasswordResetConfirmView,
+    PasswordResetView,
+)
+
+from .auth.views import LoginView, PasswordChangeView, UserDetailsView  # Already .as_view
+
+
+# Authentication / Registration routes
+auth_patterns = [
+    path("signup/", RegisterView.as_view(), name="rest_register"),
+    # Route to confirm email
+    path("signup/verify-email/", VerifyEmailView.as_view(), name="account_email_verification_sent"),
+    # Route to email form to reset password
+    path("password/reset/", PasswordResetView.as_view(), name="rest_password_reset"),
+    # Route to reset password
+    path(
+        "password/reset/confirm/",
+        PasswordResetConfirmView.as_view(),
+        name="rest_password_reset_confirm",
+    ),
+    path("login/", LoginView, name="rest_login"),
+    path("logout/", LogoutView.as_view(), name="rest_logout"),
+    path("user/", UserDetailsView, name="rest_user_details"),
+    path("user/password/change/", PasswordChangeView, name="rest_password_change"),
+]
+
+
+if getattr(settings, "REST_USE_JWT", False):
+    from rest_framework_simplejwt.views import TokenVerifyView
+    from dj_rest_auth.jwt_auth import get_refresh_view
+
+    auth_patterns += [
+        path("token/verify/", TokenVerifyView.as_view(), name="token_verify"),
+        path("token/refresh/", get_refresh_view().as_view(), name="token_refresh"),
+    ]
+
+
+# Api routes
+api_patterns = [
+    path("api/v1/", include("courses.urls")),
+    path("api/v1/auth/", include(auth_patterns), name="rest_auth"),
+]
 
 
 schema_view = get_schema_view(
@@ -16,30 +60,25 @@ schema_view = get_schema_view(
         description="Automatically generated API docs",
         contact=openapi.Contact(email="abdelrahmankandil@hotmail.com"),
     ),
+    patterns=api_patterns,
 )
 
-api_patterns = [
-    path("api/v1/", include("courses.urls")),
-    path(
-        "api/v1/auth/password/reset/confirm/<slug:uidb64>/<slug:token>/",
-        PasswordResetConfirmView.as_view(),
-        name="password_reset_confirm",
-    ),
-    path("api/v1/auth/", include("dj_rest_auth.urls"), name="rest_auth"),
-    path(
-        "api/v1/signup/account-confirm-email/<str:key>/",
-        ConfirmEmailView.as_view(),
-        name="account_email_verification_done",
-    ),
-    path("api/v1/signup/", include("dj_rest_auth.registration.urls"), name="rest_signup"),
-    path("api/v1/signup/account-confirm-email/", VerifyEmailView.as_view(), name="account_email_verification_sent"),
-]
-
+# General routes
 urlpatterns = (
     [
         # Api Doc homepage
         path("", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
         path("", include(api_patterns)),
+        path(  # Required route with name "account_confirm_email" that is sent to user email on sign up
+            settings.FRONTEND_EMAIL_CONFIRMATION_URL,
+            TemplateView.as_view(),  # ? Just a stub view
+            name="account_confirm_email",
+        ),
+        path(  # Required route with name "password_reset_confirm" that is sent to user email on reset
+            settings.FRONTEND_PASSWORD_RESET_CONFIRMATION_URL,
+            TemplateView.as_view(),  # ? Just a stub view
+            name="password_reset_confirm",
+        ),
         path("grappelli/", include("grappelli.urls")),  # grappelli URLS
         path(settings.ADMIN_URL, admin.site.urls),
     ]
