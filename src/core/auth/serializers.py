@@ -4,8 +4,20 @@ from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from dj_rest_auth.registration.serializers import RegisterSerializer
 
+from users.serializers import UserSerializer
 
 User = get_user_model()
+
+
+# ! This is mainly for swagger documentation purposes
+class LoginResponseSerializer(serializers.Serializer):
+    """
+    Custom serializer used to represent response for auth login view
+    """
+
+    access_token = serializers.CharField(required=True)
+    refresh_token = serializers.CharField(required=True)
+    user = UserSerializer(required=True, many=False)
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):

@@ -73,6 +73,11 @@ AUTH_USER_MODEL = "users.User"
 LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/api/auth/login"
 
+# django path url patterns
+FRONTEND_EMAIL_CONFIRMATION_URL = "signup/email/verify/<str:key>"
+FRONTEND_PASSWORD_RESET_CONFIRMATION_URL = "password/reset/confirm/<slug:uidb64>/<slug:token>"
+
+
 # dj-rest-auth
 # ------------------------------------------------------------------------------
 REST_USE_JWT = True
@@ -84,17 +89,18 @@ JWT_AUTH_SAMESITE = "Lax"
 
 REST_AUTH_SERIALIZERS = {
     "JWT_TOKEN_CLAIMS_SERIALIZER": "core.auth.serializers.CustomTokenObtainPairSerializer",
+    "USER_DETAILS_SERIALIZER": "users.serializers.UserSerializer",
 }
 
 REST_AUTH_REGISTER_SERIALIZERS = {"REGISTER_SERIALIZER": "core.auth.serializers.CustomRegisterSerializer"}
 
 # django-allauth
 # ------------------------------------------------------------------------------
-ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 8
+ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 4
 ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 300
 ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 
-ACCOUNT_CONFIRM_EMAIL_ON_GET = True
+ACCOUNT_CONFIRM_EMAIL_ON_GET = False
 ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = None
 ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1
 ACCOUNT_EMAIL_CONFIRMATION_HMAC = True
@@ -106,11 +112,13 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_UNIQUE_EMAIL = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_MAX_EMAIL_ADDRESSES = 1  # User wont be able to change his email
+ACCOUNT_PRESERVE_USERNAME_CASING = False  # Always save username in lowercase
 
 ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = False
 
-ACCOUNT_PRESERVE_USERNAME_CASING = True
+ACCOUNT_ADAPTER = "core.auth.adapters.CustomAccountAdapter"
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
 
 # djangorestframework-simplejwt
 # ------------------------------------------------------------------------------
@@ -141,10 +149,10 @@ PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
 ]
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
+    # {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
+    # {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
+    # {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+    # {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 # MIDDLEWARE
@@ -153,8 +161,8 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.locale.LocaleMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",

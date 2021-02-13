@@ -42,12 +42,6 @@ JWT_AUTH_SECURE = True
 JWT_AUTH_HTTPONLY = True
 JWT_AUTH_SAMESITE = "Lax"
 
-REST_AUTH_SERIALIZERS = {
-    "JWT_TOKEN_CLAIMS_SERIALIZER": "core.auth.serializers.CustomTokenObtainPairSerializer",
-}
-
-REST_AUTH_REGISTER_SERIALIZERS = {"REGISTER_SERIALIZER": "core.auth.serializers.CustomRegisterSerializer"}
-
 # django-allauth
 # ------------------------------------------------------------------------------
 ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 8

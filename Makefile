@@ -66,5 +66,13 @@ bash:
 fmtlint:
 	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} black . && flake8 .
 
+.PHONY: create-admin-user
+create-admin-user:
+	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py create_admin_user \
+	--noinput \
+	--username admin \
+	--password admin \
+	--email admin@hotmail.com
+
 .PHONY: create-db
 create-db: stop prune db migrate
