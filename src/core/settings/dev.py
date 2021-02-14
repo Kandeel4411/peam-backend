@@ -33,7 +33,7 @@ ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 8
 
 # djangorestframework-simplejwt
 # ------------------------------------------------------------------------------
-SIMPLE_JWT = SIMPLE_JWT.update(  # noqa
+SIMPLE_JWT.update(  # noqa
     {
         "SIGNING_KEY": env("JWT_KEY", default=SECRET_KEY),
     }
