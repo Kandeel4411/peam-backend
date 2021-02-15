@@ -41,7 +41,7 @@ class CourseView(GenericAPIView):
         """
         instances = self.get_queryset()
         serializer = self.get_serializer(instances, many=True)
-        return Response(serializer.data)
+        return Response({"courses": serializer.data})
 
 
 class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
@@ -109,7 +109,7 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         """
         instances = self.get_queryset()
         serializer = self.get_serializer(instances, many=True)
-        return Response(serializer.data)
+        return Response({"requirements": serializer.data})
 
     @transaction.atomic
     @swagger_auto_schema(
@@ -192,7 +192,7 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         """
         instances = self.get_queryset()
         serializer = self.get_serializer(instances, many=True)
-        return Response(serializer.data)
+        return Response({"teams": serializer.data})
 
     @transaction.atomic
     @swagger_auto_schema(request_body=TeamSerializer(), responses={status.HTTP_201_CREATED: TeamSerializer()})
@@ -271,7 +271,7 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         """
         instances = self.get_queryset()
         serializer = self.get_serializer(instances, many=True)
-        return Response(serializer.data)
+        return Response({"attachments": serializer.data})
 
     @transaction.atomic
     @swagger_auto_schema(
@@ -354,7 +354,7 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
         """
         instances = self.get_queryset()
         serializer = self.get_serializer(instances, many=True)
-        return Response(serializer.data)
+        return Response({"attachments": serializer.data})
 
     @transaction.atomic
     @swagger_auto_schema(
