@@ -212,10 +212,10 @@ class CourseSerializer(serializers.ModelSerializer):
         """
         Custom updating method
         """
-        instance.owner = (validated_data.get("owner_id", instance.owner),)
-        instance.code = (validated_data.get("code", instance.code),)
-        instance.title = (validated_data.get("title", instance.title),)
-        instance.description = (validated_data.get("description", instance.description),)
+        instance.owner = validated_data.get("owner_id", instance.owner)
+        instance.code = validated_data.get("code", instance.code)
+        instance.title = validated_data.get("title", instance.title)
+        instance.description = validated_data.get("description", instance.description)
         instance.save()
 
         return instance
