@@ -1,5 +1,6 @@
 from django.urls import path, include
 
+from .invites.views import CourseInvitationView, CourseInvitationDetailView
 from .views import (
     CourseView,
     CourseDetailView,
@@ -17,6 +18,10 @@ from .views import (
 # Course patterns
 course_pattern = "courses/"
 course_detail_pattern = f"{course_pattern}<str:course_owner>/<str:course_code>/"
+
+# Course invitation patterns
+course_invitation_pattern = f"{course_detail_pattern}invitations/"
+course_invitation_detail_pattern = f"{course_detail_pattern}invitations/<str:token>/"
 
 # Project requirement patterns
 requirement_pattern = f"{course_detail_pattern}requirements/"
@@ -37,6 +42,8 @@ course_attachment_detail_pattern = f"{course_attachment_pattern}<slug:attachment
 urlpatterns = [
     path(course_pattern, CourseView.as_view(), name="courses"),
     path(course_detail_pattern, CourseDetailView.as_view(), name="course-detail"),
+    path(course_invitation_pattern, CourseInvitationView.as_view(), name="course-invitation"),
+    path(course_invitation_detail_pattern, CourseInvitationDetailView.as_view(), name="course-invitation-detail"),
     path(course_attachment_pattern, CourseAttachmentView.as_view(), name="course-attachment"),
     path(course_attachment_detail_pattern, CourseAttachmentDetailView.as_view(), name="course-attachment-detail"),
     path(requirement_pattern, ProjectRequirementView.as_view(), name="project-requirement"),

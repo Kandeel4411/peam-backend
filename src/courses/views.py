@@ -29,7 +29,7 @@ class CourseView(GenericAPIView):
         """
         Create a course instance.
         """
-        serializer = self.get_serializer(data=request.data, context={"request_user": request.user})
+        serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -72,9 +72,7 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Updates a course instance.
         """
         instance = self.get_object()
-        serializer = self.get_serializer(
-            instance, data=request.data, partial=True, context={"request_user": request.user}
-        )
+        serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
@@ -382,7 +380,7 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         "course_owner": "requirement__course__owner__username",
         "course_code": "requirement__course__code",
         "requirement_title": "requirement__title",
-        "attachment_id": "uid",
+        "attachment_uid": "uid",
     }
 
     @swagger_auto_schema(responses={status.HTTP_200_OK: ProjectRequirementAttachmentSerializer()})

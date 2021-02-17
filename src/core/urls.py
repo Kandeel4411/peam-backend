@@ -79,6 +79,11 @@ urlpatterns = (
             TemplateView.as_view(),  # ? Just a stub view
             name="password_reset_confirm",
         ),
+        path(  # Required route with name "login" that is sent to user email
+            settings.FRONTEND_LOGIN_URL,
+            TemplateView.as_view(),  # ? Just a stub view
+            name="login",
+        ),
         path("grappelli/", include("grappelli.urls")),  # grappelli URLS
         path(settings.ADMIN_URL, admin.site.urls),
     ]
