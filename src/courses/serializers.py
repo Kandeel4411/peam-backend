@@ -141,7 +141,7 @@ class CourseSerializer(serializers.ModelSerializer):
     """
     A serializer responsible for handling Course instances.
 
-    *Note*: request.user is expected to be passed in the context.
+    *Note*: request is expected to be passed in the context.
     """
 
     owner = UserSerializer(many=False, read_only=True)
@@ -181,7 +181,7 @@ class CourseSerializer(serializers.ModelSerializer):
         """
         Custom validation method
         """
-        request_user: User = self.context["request_user"]
+        request_user: User = self.context["request"].user
 
         if self.instance is not None:  # An instance already exists
             owner: User = data.get("owner_id", None)
