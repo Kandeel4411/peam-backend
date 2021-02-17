@@ -1,24 +1,29 @@
 import uuid
+from typing import Optional
 
-from django.db import models
-from django.contrib.auth import get_user_model
+from django.db import models, transaction
+from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.contrib.postgres.fields import CICharField
+from allauth.account.adapter import get_adapter
+from django.contrib.sites.shortcuts import get_current_site
+from django.urls import reverse
 
 from core.utils.tz import local_timezone_now
-
-User = get_user_model()
+from core.models import BaseInvitation
 
 
 class Course(models.Model):
     uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
-    owner = models.ForeignKey(User, to_field="uid", on_delete=models.CASCADE, related_name="courses")
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE, related_name="courses"
+    )
     title = models.CharField(max_length=50, blank=False, null=False, verbose_name=_("Title"))
     code = CICharField(max_length=10, blank=False, null=False, verbose_name=_("Code"))
     description = models.CharField(max_length=300, blank=True, null=False, verbose_name=_("Description"))
-    teachers = models.ManyToManyField(User, related_name="as_teacher_set", through="CourseTeacher")
-    students = models.ManyToManyField(User, related_name="as_student_set", through="CourseStudent")
+    teachers = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="as_teacher_set", through="CourseTeacher")
+    students = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="as_student_set", through="CourseStudent")
 
     class Meta:
         managed = True
@@ -32,7 +37,7 @@ class Course(models.Model):
 
 
 class CourseTeacher(models.Model):
-    teacher = models.ForeignKey(User, to_field="uid", on_delete=models.CASCADE)
+    teacher = models.ForeignKey(settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE)
     course = models.ForeignKey(Course, to_field="uid", on_delete=models.CASCADE)
 
     class Meta:
@@ -46,7 +51,7 @@ class CourseTeacher(models.Model):
 
 
 class CourseStudent(models.Model):
-    student = models.ForeignKey(User, to_field="uid", on_delete=models.CASCADE)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE)
     course = models.ForeignKey(Course, to_field="uid", on_delete=models.CASCADE)
 
     class Meta:
@@ -122,7 +127,7 @@ class Team(models.Model):
     uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     name = CICharField(max_length=50, blank=False, null=False, verbose_name=_("Name"))
     requirement = models.ForeignKey(ProjectRequirement, to_field="uid", on_delete=models.CASCADE, related_name="teams")
-    students = models.ManyToManyField(User, related_name="teams", through="TeamStudent")
+    students = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="teams", through="TeamStudent")
 
     class Meta:
         managed = True
@@ -135,7 +140,7 @@ class Team(models.Model):
 
 
 class TeamStudent(models.Model):
-    student = models.ForeignKey(User, to_field="uid", on_delete=models.CASCADE)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE)
     team = models.ForeignKey(Team, to_field="uid", on_delete=models.CASCADE)
 
     class Meta:
@@ -146,3 +151,59 @@ class TeamStudent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.student} - {self.team}"
+
+
+class CourseInvitation(BaseInvitation):
+    STUDENT_INVITE: str = "student"
+    TEACHER_INVITE: str = "teacher"
+
+    INVITE_CHOICES: tuple = ((STUDENT_INVITE, STUDENT_INVITE), (TEACHER_INVITE, TEACHER_INVITE))
+
+    email = models.EmailField(blank=False, null=False, unique=True, verbose_name=_("Email address"))
+    type = models.CharField(choices=INVITE_CHOICES, max_length=30, blank=False, null=False)
+    course = models.ForeignKey(Course, to_field="uid", on_delete=models.CASCADE, related_name="invitations")
+
+    class Meta(BaseInvitation.Meta):
+        abstract = False
+        managed = True
+        verbose_name = "Course Invitation"
+        verbose_name_plural = "Course Invitations"
+        constraints = BaseInvitation.Meta.constraints + [
+            models.UniqueConstraint(fields=["email", "type", "course"], name="unique_course_invitation")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.sender} invited {self.email}[{self.type}] to {self.course}"
+
+    @classmethod
+    def send_invitation(
+        cls, request, email_template_prefix="invitations/email_invite", *args, **kwargs
+    ) -> "CourseInvitation":
+        """
+        Helper method that wraps creation of a course invitation and sends an email and
+        returns created course invitation instance if successful.
+
+        :request: django http request
+
+        :email_template: template that is going to be used for
+        the invitation(site_name, email, invite_url are available in ctx)
+
+        :*args, **kwargs: arguments that are going to be directly passed to ORM object creation
+
+        *Note:* This method should generally be used instead of manual creation of course invitation as
+        it ensures that if creation fails, an email wont be sent and vice versa
+        """
+
+        adapter = get_adapter(request)
+        site = get_current_site(request)
+        protocol: str = settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL
+        invite_url: str = f"{protocol}://{site.domain}{reverse('login')}"
+
+        with transaction.atomic():
+            invitation = cls.objects.create(*args, **kwargs)
+
+            invite_url += f"?token={invitation.token}"  # Adding Invitation token as a query param to the invite url
+            email_template_ctx = {"invite_url": invite_url, "email": invitation.email, "site_name": site.domain}
+            adapter.send_mail(email_template_prefix, invitation.email, email_template_ctx)
+
+            return invitation

@@ -85,7 +85,7 @@ class TeamSerializer(serializers.ModelSerializer):
         Custom creation method
         """
 
-        # Removing "student" to not throw an error and create manually
+        # Removing "students" to not throw an error and create manually
         students = validated_data.pop("students")
 
         team: self.Meta.model = super().create(validated_data)
@@ -140,6 +140,8 @@ class CourseAttachmentSerializer(serializers.ModelSerializer):
 class CourseSerializer(serializers.ModelSerializer):
     """
     A serializer responsible for handling Course instances.
+
+    *Note*: request.user is expected to be passed in the context.
     """
 
     owner = UserSerializer(many=False, read_only=True)

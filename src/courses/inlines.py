@@ -9,6 +9,7 @@ class ProjectRequirementAttachmentInline(admin.TabularInline):
     """
 
     model = ProjectRequirementAttachment
+    extra = 0
 
 
 class CourseAttachmentInline(admin.TabularInline):
@@ -17,6 +18,7 @@ class CourseAttachmentInline(admin.TabularInline):
     """
 
     model = CourseAttachment
+    extra = 0
 
 
 class CourseTeacherInline(admin.TabularInline):
@@ -25,6 +27,7 @@ class CourseTeacherInline(admin.TabularInline):
     """
 
     model = CourseTeacher
+    extra = 0
 
 
 class CourseStudentInline(admin.TabularInline):
@@ -33,6 +36,7 @@ class CourseStudentInline(admin.TabularInline):
     """
 
     model = CourseStudent
+    extra = 0
 
 
 class TeamStudentInline(admin.TabularInline):
@@ -41,3 +45,4 @@ class TeamStudentInline(admin.TabularInline):
     """
 
     model = TeamStudent
+    extra = 0

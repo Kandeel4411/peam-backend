@@ -73,10 +73,14 @@ AUTH_USER_MODEL = "users.User"
 LOGIN_REDIRECT_URL = "/"
 LOGIN_URL = "/api/auth/login"
 
-# django path url patterns
-FRONTEND_EMAIL_CONFIRMATION_URL = "signup/email/verify/<str:key>"
-FRONTEND_PASSWORD_RESET_CONFIRMATION_URL = "password/reset/confirm/<slug:uidb64>/<slug:token>"
 
+# PEAM BACKEND
+# ------------------------------------------------------------------------------
+
+# django path url patterns
+FRONTEND_EMAIL_CONFIRMATION_URL = "signup/email/verify/<str:key>/"
+FRONTEND_PASSWORD_RESET_CONFIRMATION_URL = "password/reset/confirm/<slug:uidb64>/<slug:token>/"
+FRONTEND_LOGIN_URL = "login/"
 
 # dj-rest-auth
 # ------------------------------------------------------------------------------
