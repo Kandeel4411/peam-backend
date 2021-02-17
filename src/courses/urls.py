@@ -29,7 +29,7 @@ requirement_detail_pattern = f"{requirement_pattern}<str:requirement_title>/"
 
 # Project requirement attachment patterns
 requirement_attachment_pattern = f"{requirement_detail_pattern}attachments/"
-requirement_attachment_detail_pattern = f"{requirement_attachment_pattern}<slug:attachment_id>/"
+requirement_attachment_detail_pattern = f"{requirement_attachment_pattern}<slug:attachment_uid>/"
 
 # Project requirement team patterns
 requirement_team_pattern = f"{requirement_detail_pattern}teams/"
@@ -37,7 +37,7 @@ requirement_team_detail_pattern = f"{requirement_team_pattern}<str:team_name>/"
 
 # Course attachment patterns
 course_attachment_pattern = f"{course_detail_pattern}attachments/"
-course_attachment_detail_pattern = f"{course_attachment_pattern}<slug:attachment_id>/"
+course_attachment_detail_pattern = f"{course_attachment_pattern}<slug:attachment_uid>/"
 
 urlpatterns = [
     path(course_pattern, CourseView.as_view(), name="courses"),
