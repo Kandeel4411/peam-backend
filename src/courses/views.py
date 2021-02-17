@@ -295,7 +295,7 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
     lookup_fields = {
         "course_owner": "course__owner__username",
         "course_code": "course__code",
-        "attachment_uid": "uid",
+        "attachment_uid": {"filter_kwarg": "uid", "pk": True},
     }
 
     @swagger_auto_schema(responses={status.HTTP_200_OK: CourseAttachmentSerializer()})
@@ -380,7 +380,7 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         "course_owner": "requirement__course__owner__username",
         "course_code": "requirement__course__code",
         "requirement_title": "requirement__title",
-        "attachment_uid": "uid",
+        "attachment_uid": {"filter_kwarg": "uid", "pk": True},
     }
 
     @swagger_auto_schema(responses={status.HTTP_200_OK: ProjectRequirementAttachmentSerializer()})
