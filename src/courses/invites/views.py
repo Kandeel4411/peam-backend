@@ -54,23 +54,26 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         emails = request_serializer.validated_data.pop("emails")
         data = request_serializer.validated_data
-        data["course"] = data["course"].uid  # Converting instance to uid
 
         # Sending course invite for each email
-        successful = []
+        success = []
+        fail = []
         for email in emails:
-            try:
-                data["email"] = email
-                serializer = self.get_serializer(data=data)
-                serializer.is_valid(raise_exception=True)
+            data["email"] = email
+            serializer = self.get_serializer(data=data)
+            if serializer.is_valid(raise_exception=False):
                 serializer.save()
-            except serializers.ValidationError:
-                # TODO
-                pass
+                success.append(email)
             else:
-                successful.append(email)
+                fail.append(
+                    {
+                        "email": email,
+                        # Retrieving serializer error to display
+                        "error": list(serializer.errors.values())[0],
+                    }
+                )
 
-        return Response({"emails": successful}, status=status.HTTP_200_OK)
+        return Response({"success": success, "fail": fail}, status=status.HTTP_200_OK)
 
 
 class CourseInvitationDetailView(GenericAPIView):

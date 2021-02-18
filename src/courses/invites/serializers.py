@@ -17,7 +17,10 @@ class CourseInvitationResponseSerializer(serializers.Serializer):
     Custom serializer used to represent response for course invitation view
     """
 
-    emails = serializers.ListField(child=serializers.EmailField(required=True, write_only=True), allow_empty=False)
+    success = serializers.ListField(child=serializers.EmailField(), allow_empty=True)
+    fail = serializers.ListField(
+        child=serializers.DictField(child=serializers.CharField(), allow_empty=False), allow_empty=True
+    )
 
 
 # ! This is mostly for swagger documentation purposes and bulk email creation
@@ -27,7 +30,7 @@ class CourseInvitationRequestSerializer(serializers.Serializer):
     """
 
     emails = serializers.ListField(child=serializers.EmailField(required=True), allow_empty=False)
-    course = serializers.SlugRelatedField(slug_field="uid", required=True, queryset=Course.objects.all())
+    course = serializers.UUIDField(required=True)
     expiry_date = serializers.DateTimeField(label="Expiry Date", required=True)
     type = serializers.ChoiceField(choices=CourseInvitation.INVITE_CHOICES, required=True)
 
