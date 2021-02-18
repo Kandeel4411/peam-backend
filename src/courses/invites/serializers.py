@@ -101,9 +101,10 @@ class CourseInvitationSerializer(FlexFieldsModelSerializer):
             sender: User = self.context["request"].user
             invite_type: str = data["type"]
             course: Course = data["course"]
+            email: str = data["email"]
 
             # The owner can't invite himself
-            if course.owner.email == sender.email:
+            if course.owner.email == email:
                 raise serializers.ValidationError(detail={"email": _("Owner can't invite himself to the course")})
 
             # If the invite is for a teacher then only the course owner can invite them

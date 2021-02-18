@@ -88,3 +88,23 @@ class BaseInvitation(models.Model):
                 self.save()
             return True
         return False
+
+    @classmethod
+    def send_invitation(
+        cls, request, email_template_prefix="invitations/email_invite", *args, **kwargs
+    ) -> "BaseInvitation":
+        """
+        Helper method that wraps creation of a invitation and sends an email and
+        returns created invitation instance if successful.
+
+        :request: django http request
+
+        :email_template: template that is going to be used for
+        the invitation(site_name, email, invite_url, sender and expiry_date are available by default in ctx)
+
+        :*args, **kwargs: arguments that are going to be directly passed to ORM object creation
+
+        *Note:* This method should generally be used instead of manual creation of invitation as
+        it ensures that if creation fails, an email wont be sent and vice versa
+        """
+        raise NotImplementedError("This method must be implemented by subclasses")

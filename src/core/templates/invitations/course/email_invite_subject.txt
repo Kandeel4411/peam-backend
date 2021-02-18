@@ -2,7 +2,7 @@
 {% autoescape off %}
 {% blocktrans %}
 
-Invitation
+Course Invitation
 
 {% endblocktrans %}
 {% endautoescape %}

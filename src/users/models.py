@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from django.db import models
 from django.conf import settings
@@ -30,3 +31,12 @@ class User(AbstractUser):
         """
         self.username = self.username.lower()  # Making sure username is always lowercase
         return super().save(*args, **kwargs)
+
+    @property
+    def full_name(self) -> Optional[str]:
+        """
+        Method that returns the full name of the user
+        """
+        if self.first_name or self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return None

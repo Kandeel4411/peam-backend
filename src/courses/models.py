@@ -190,7 +190,7 @@ class CourseInvitation(BaseInvitation):
 
     @classmethod
     def send_invitation(
-        cls, request, email_template_prefix="invitations/email_invite", *args, **kwargs
+        cls, request, email_template_prefix="invitations/course/email_invite", *args, **kwargs
     ) -> "CourseInvitation":
         """
         Helper method that wraps creation of a course invitation and sends an email and
@@ -199,7 +199,7 @@ class CourseInvitation(BaseInvitation):
         :request: django http request
 
         :email_template: template that is going to be used for
-        the invitation(site_name, email, invite_url are available in ctx)
+        the invitation(site_name, email, invite_url, expiry_date, sender and course are available in ctx)
 
         :*args, **kwargs: arguments that are going to be directly passed to ORM object creation
 
@@ -213,11 +213,26 @@ class CourseInvitation(BaseInvitation):
         invite_url: str = f"{protocol}://{site.domain}{reverse('login')}"
 
         with transaction.atomic():
-            invitation = cls.objects.create(*args, **kwargs)
+            invitation: cls = cls.objects.create(*args, **kwargs)
 
             # Adding Invitation token as a query param to the invite url
             invite_url += f"?{settings.FRONTEND_INVITATION_TOKEN_PARAM}={invitation.token}"
-            email_template_ctx = {"invite_url": invite_url, "email": invitation.email, "site_name": site.domain}
+
+            # Show sender full name if its present
+            sender = invitation.sender
+            if sender.full_name is None:
+                sender = sender.username
+            else:
+                sender = sender.full_name.title()
+
+            email_template_ctx = {
+                "invite_url": invite_url,
+                "email": invitation.email,
+                "site_name": site.domain,
+                "course": invitation.course.title,
+                "sender": sender,
+                "expiry_date": f"{timezone.localtime(invitation.expiry_date):%Y-%m-%d}",
+            }
             adapter.send_mail(email_template_prefix, invitation.email, email_template_ctx)
 
             return invitation
