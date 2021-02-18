@@ -57,14 +57,14 @@ class BaseInvitation(models.Model):
         settings.AUTH_USER_MODEL,
         to_field="uid",
         on_delete=models.CASCADE,
-        related_name="invitations",
     )
 
     class Meta:
         abstract = True
         constraints = [
             models.CheckConstraint(
-                check=models.Q(created_at__lte=models.F("expiry_date")), name="expiry_date_constraint"
+                check=models.Q(created_at__lte=models.F("expiry_date")),
+                name="%(class)s_expiry_date_constraint",
             ),
         ]
 

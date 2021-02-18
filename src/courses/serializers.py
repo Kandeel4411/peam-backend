@@ -23,6 +23,8 @@ User = get_user_model()
 class TeamSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling Team instances.
+
+    *Note*: request is expected to be passed in the context.
     """
 
     students = serializers.SlugRelatedField(slug_field="uid", queryset=User.objects.all(), required=True, many=True)
@@ -30,7 +32,7 @@ class TeamSerializer(FlexFieldsModelSerializer):
     class Meta:
         model = Team
         fields = ["uid", "name", "requirement", "students"]
-        read_only_fields = ["uid"]
+        read_only_fields = ["uid", "students"]
         extra_kwargs = {
             "requirement": {"write_only": True},
         }
@@ -39,60 +41,17 @@ class TeamSerializer(FlexFieldsModelSerializer):
             "students": (UserSerializer, {"many": True}),
         }
 
-    def validate(self, data: dict) -> dict:
-        """
-        Custom validation method
-        """
-
-        if self.instance is not None:  # An instance already exists
-            students: list[User] = data.get("students", None)
-
-            if students is not None:
-                course = self.instance.requirement.course
-                for student in students:
-                    # New student must be one of the course students
-                    student = course.students.filter(pk=student.pk)
-                    if not student.exists():
-                        raise serializers.ValidationError(
-                            detail={"students": _("All team students must be part of course students.")}
-                        )
-
-        else:
-            students: list[User] = data["students"]
-
-            course = data["requirement"].course
-            for student in students:
-                # New student must be one of the course students
-                student = course.students.filter(pk=student.pk)
-                if not student.exists():
-                    raise serializers.ValidationError(
-                        detail={"students": _("All team students must be part of course students.")}
-                    )
-        return super().validate(data)
-
-    def update(self, instance: Meta.model, validated_data: dict) -> Meta.model:
-        """
-        Custom updating method
-        """
-        students = validated_data.pop("students", None)
-        instance: self.Meta.model = super().update(instance, validated_data)
-
-        if students is not None:
-            instance.students.set(objs=students)
-        return instance
-
     def create(self, validated_data: dict) -> Meta.model:
         """
         Custom creation method
         """
 
-        # Removing "students" to not throw an error and create manually
-        students = validated_data.pop("students")
-
         team: self.Meta.model = super().create(validated_data)
 
-        for student in students:
-            TeamStudent.objects.create(team=team, student=student)
+        # Adding request user as a student to the
+        request = self.contest["request"]
+        TeamStudent.objects.create(team=team, student=request.user)
+
         return team
 
 

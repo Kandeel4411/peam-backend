@@ -13,7 +13,7 @@ from dj_rest_auth.views import (
     PasswordResetView,
 )
 
-from .auth.views import LoginView, PasswordChangeView, UserDetailsView  # Already .as_view
+from .auth.views import LoginView, PasswordChangeView  # Already .as_view
 
 
 # Authentication / Registration routes
@@ -30,8 +30,8 @@ auth_patterns = [
         name="rest_password_reset_confirm",
     ),
     path("login/", LoginView, name="rest_login"),
+    # Routes that require logged in user
     path("logout/", LogoutView.as_view(), name="rest_logout"),
-    path("user/", UserDetailsView, name="rest_user_details"),
     path("user/password/change/", PasswordChangeView, name="rest_password_change"),
 ]
 

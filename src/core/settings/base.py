@@ -81,7 +81,9 @@ LOGIN_URL = "/api/auth/login"
 FRONTEND_EMAIL_CONFIRMATION_URL = "signup/email/verify/<str:key>/"
 FRONTEND_PASSWORD_RESET_CONFIRMATION_URL = "password/reset/confirm/<slug:uidb64>/<slug:token>/"
 FRONTEND_LOGIN_URL = "login/"
-FRONTEND_INVITATION_TOKEN_PARAM = "token"
+FRONTEND_COURSE_INVITATION_PARAM = "course-invitation"
+FRONTEND_TEAM_INVITATION_PARAM = "team-invitation"
+
 
 # drf-flex-fields
 # ------------------------------------------------------------------------------

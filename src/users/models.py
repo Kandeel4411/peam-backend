@@ -14,8 +14,9 @@ class User(AbstractUser):
 
     uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True, verbose_name=_("Profile Picture"))
+    email = models.EmailField(verbose_name=_("Email address"), null=False, blank=False)
     username = CICharField(
-        _("username"),
+        verbose_name=_("Username"),
         max_length=150,
         unique=True,
         help_text=_("Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only."),
