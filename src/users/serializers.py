@@ -4,11 +4,13 @@ from rest_framework import serializers
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from dj_rest_auth.serializers import UserDetailsSerializer
+from rest_flex_fields import FlexFieldsModelSerializer
+
 
 User = get_user_model()
 
 
-class UserSerializer(serializers.ModelSerializer):
+class UserSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling User instances.
     """

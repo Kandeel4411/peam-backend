@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils.translation import gettext_lazy as _
+from rest_flex_fields import FlexFieldsModelSerializer
 
 from users.serializers import UserSerializer
 from .models import (
@@ -19,24 +20,24 @@ from .models import (
 User = get_user_model()
 
 
-class TeamSerializer(serializers.ModelSerializer):
+class TeamSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling Team instances.
     """
 
-    members = UserSerializer(source="students", many=True, required=False, read_only=True)
-    students = serializers.SlugRelatedField(
-        slug_field="uid", queryset=User.objects.all(), required=True, write_only=True, many=True
-    )
+    students = serializers.SlugRelatedField(slug_field="uid", queryset=User.objects.all(), required=True, many=True)
 
     class Meta:
         model = Team
-        fields = ["uid", "name", "requirement", "students", "members"]
+        fields = ["uid", "name", "requirement", "students"]
         read_only_fields = ["uid"]
         extra_kwargs = {
             "requirement": {"write_only": True},
         }
         validators = [serializers.UniqueTogetherValidator(queryset=Team.objects.all(), fields=["name", "requirement"])]
+        expandable_fields = {
+            "students": (UserSerializer, {"many": True}),
+        }
 
     def validate(self, data: dict) -> dict:
         """
@@ -95,7 +96,7 @@ class TeamSerializer(serializers.ModelSerializer):
         return team
 
 
-class ProjectRequirementAttachmentSerializer(serializers.ModelSerializer):
+class ProjectRequirementAttachmentSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling ProjectRequirementAttachment instances.
     """
@@ -107,25 +108,29 @@ class ProjectRequirementAttachmentSerializer(serializers.ModelSerializer):
         extra_kwargs = {"requirement": {"write_only": True}}
 
 
-class ProjectRequirementSerializer(serializers.ModelSerializer):
+class ProjectRequirementSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling ProjectRequirement instances.
     """
 
-    teams = TeamSerializer(many=True, read_only=True)
-    attachments = ProjectRequirementAttachmentSerializer(many=True, read_only=True)
+    teams = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    attachments = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
 
     class Meta:
         model = ProjectRequirement
         fields = ["uid", "title", "course", "description", "to_dt", "from_dt", "teams", "attachments"]
-        read_only_fields = ["uid"]
+        read_only_fields = ["uid", "teams", "attachments"]
         extra_kwargs = {"course": {"write_only": True}}
         validators = [
             serializers.UniqueTogetherValidator(queryset=ProjectRequirement.objects.all(), fields=["title", "course"])
         ]
+        expandable_fields = {
+            "teams": (TeamSerializer, {"many": True}),
+            "attachments": (ProjectRequirementAttachmentSerializer, {"many": True}),
+        }
 
 
-class CourseAttachmentSerializer(serializers.ModelSerializer):
+class CourseAttachmentSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling CourseAttachment instances.
     """
@@ -137,15 +142,14 @@ class CourseAttachmentSerializer(serializers.ModelSerializer):
         extra_kwargs = {"course": {"write_only": True}}
 
 
-class CourseSerializer(serializers.ModelSerializer):
+class CourseSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling Course instances.
 
     *Note*: request is expected to be passed in the context.
     """
 
-    owner = UserSerializer(many=False, read_only=True)
-    owner_id = serializers.SlugRelatedField(
+    owner = serializers.SlugRelatedField(
         slug_field="uid",
         queryset=User.objects.all(),
         help_text=_(
@@ -153,19 +157,17 @@ class CourseSerializer(serializers.ModelSerializer):
             " the same as the previous owner."
         ),
         required=True,
-        write_only=True,
     )
-    students = UserSerializer(many=True, read_only=True)
-    teachers = UserSerializer(many=True, read_only=True)
-    requirements = ProjectRequirementSerializer(many=True, read_only=True)
-    attachments = CourseAttachmentSerializer(many=True, read_only=True)
+    students = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    teachers = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    requirements = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    attachments = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
 
     class Meta:
         model = Course
         fields = [
             "uid",
             "owner",
-            "owner_id",
             "title",
             "code",
             "description",
@@ -174,8 +176,15 @@ class CourseSerializer(serializers.ModelSerializer):
             "requirements",
             "attachments",
         ]
-        read_only_fields = ["uid"]
-        validators = [serializers.UniqueTogetherValidator(queryset=Course.objects.all(), fields=["owner_id", "code"])]
+        read_only_fields = ["uid", "teachers", "students", "requirements", "attachments"]
+        validators = [serializers.UniqueTogetherValidator(queryset=Course.objects.all(), fields=["owner", "code"])]
+        expandable_fields = {
+            "owner": UserSerializer,
+            "students": (UserSerializer, {"many": True}),
+            "teachers": (UserSerializer, {"many": True}),
+            "requirements": (ProjectRequirementSerializer, {"many": True}),
+            "attachments": (CourseAttachmentSerializer, {"many": True}),
+        }
 
     def validate(self, data: dict) -> dict:
         """
@@ -184,35 +193,33 @@ class CourseSerializer(serializers.ModelSerializer):
         request_user: User = self.context["request"].user
 
         if self.instance is not None:  # An instance already exists
-            owner: User = data.get("owner_id", None)
+            owner: User = data.get("owner", None)
 
             if owner is not None:
                 # Request user must be the same as instance owner if owner is going to be updated
                 if request_user.uid != owner.uid:
                     raise serializers.ValidationError(
-                        detail={"owner_id": _("Only the owner can transfer the course to a different user.")}
+                        detail={"owner": _("Only the owner can transfer the course to a different user.")}
                     )
 
                 # New owner must be one of the course teachers
                 teacher = self.instance.teachers.filter(pk=owner.pk)
                 if not teacher.exists():
-                    raise serializers.ValidationError(
-                        detail={"owner_id": _("Owner must be one of the course teachers.")}
-                    )
+                    raise serializers.ValidationError(detail={"owner": _("Owner must be one of the course teachers.")})
 
         else:
-            owner: User = data["owner_id"]
+            owner: User = data["owner"]
 
             # owner must be the same as request user
-            if request_user.uid != owner.uid:
-                raise serializers.ValidationError(detail={"owner_id": _("Owner must be the same as request user.")})
+            if request_user != owner:
+                raise serializers.ValidationError(detail={"owner": _("Owner must be the same as request user.")})
         return super().validate(data)
 
     def update(self, instance: Meta.model, validated_data: dict) -> Meta.model:
         """
         Custom updating method
         """
-        instance.owner = validated_data.get("owner_id", instance.owner)
+        instance.owner = validated_data.get("owner", instance.owner)
         instance.code = validated_data.get("code", instance.code)
         instance.title = validated_data.get("title", instance.title)
         instance.description = validated_data.get("description", instance.description)
@@ -225,8 +232,6 @@ class CourseSerializer(serializers.ModelSerializer):
         Custom creation method
         """
 
-        # Renaming key to "owner" to not throw an error
-        validated_data["owner"] = validated_data.pop("owner_id")
         course: self.Meta.model = super().create(validated_data)
 
         # Create a course teacher instance for the owner

@@ -81,6 +81,12 @@ LOGIN_URL = "/api/auth/login"
 FRONTEND_EMAIL_CONFIRMATION_URL = "signup/email/verify/<str:key>/"
 FRONTEND_PASSWORD_RESET_CONFIRMATION_URL = "password/reset/confirm/<slug:uidb64>/<slug:token>/"
 FRONTEND_LOGIN_URL = "login/"
+FRONTEND_INVITATION_TOKEN_PARAM = "token"
+
+# drf-flex-fields
+# ------------------------------------------------------------------------------
+REST_FLEX_FIELDS = {"EXPAND_PARAM": "expand", "OMIT_PARAM": "omit", "FIELDS_PARAM": "only"}
+
 
 # dj-rest-auth
 # ------------------------------------------------------------------------------

@@ -6,9 +6,12 @@ from rest_framework import status, serializers
 from django.db import transaction
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
 from drf_yasg.utils import swagger_auto_schema
 
 from core.utils.mixins import MultipleRequiredFieldLookupMixin
+from core.utils.flex_fields import get_flex_serializer_config
+from core.utils.openapi import openapi_error_response
 from courses.models import CourseInvitation, Course
 from .serializers import (
     CourseInvitationSerializer,
@@ -36,18 +39,31 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     def get(self, request, *args, **kwargs) -> Response:
         """
         Retrieves course invitation instances.
+
+        expansion query params apply*
         """
         instances = self.get_queryset()
-        serializer = self.get_serializer(instances, many=True)
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instances, many=True, **config)
         return Response({"invitations": serializer.data})
 
     @swagger_auto_schema(
         request_body=CourseInvitationRequestSerializer(),
-        responses={status.HTTP_200_OK: CourseInvitationResponseSerializer()},
+        responses={
+            status.HTTP_200_OK: CourseInvitationResponseSerializer(),
+            status.HTTP_400_BAD_REQUEST: openapi_error_response(
+                description="Resource specific errors.",
+                examples={
+                    "property": "error message.",
+                },
+            ),
+        },
     )
     def post(self, request, *args, **kwargs) -> Response:
         """
         Send a course invitation.
+
+        Always returns 200
         """
         request_serializer = CourseInvitationRequestSerializer(data=request.data)
         request_serializer.is_valid(raise_exception=True)
@@ -89,19 +105,76 @@ class CourseInvitationDetailView(GenericAPIView):
     def get(self, request, *args, **kwargs) -> Response:
         """
         Retrieves a course invitation instance.
+
+        expansion query params apply*
         """
         instance = self.get_object()
-        serializer = self.get_serializer(instance)
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
+    @transaction.atomic
     @swagger_auto_schema(
-        request_body=CourseInvitationStatusRequestSerializer(), responses={status.HTTP_201_CREATED: "Success"}
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_400_BAD_REQUEST: openapi_error_response(
+                description="Only course owner can delete an invitation.",
+                examples={
+                    "error": "Only course owner can delete an invitation.",
+                },
+            ),
+        }
+    )
+    def delete(self, request, *args, **kwargs) -> Response:
+        """
+        Deletes a course invitation.
+
+        Only course owner can delete a course invitation
+        """
+        instance = self.get_object()
+
+        # Only course owner can delete a course invitation
+        if instance.owner != request.user:
+            return Response(
+                {"error": _("Only course owner can delete an invitation.")}, status=status.HTTP_400_BAD_REQUEST
+            )
+        else:
+            instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @swagger_auto_schema(
+        request_body=CourseInvitationStatusRequestSerializer(),
+        responses={
+            status.HTTP_200_OK: "",
+            status.HTTP_400_BAD_REQUEST: openapi_error_response(
+                description="Resource specific errors.",
+                examples={
+                    "property": "error message.",
+                },
+            ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Only the user the invitation belongs to can accept or decline.",
+                examples={
+                    "error": "Only the user the invitation belongs to can accept or decline.",
+                },
+            ),
+        },
     )
     def post(self, request, *args, **kwargs) -> Response:
         """
+        User response to course invitation
+
         Acceptance or denial of a course invitation instance.
         """
         instance = self.get_object()
+
+        # Only the user the invitation email belongs to can continue
+        if request.user.email != instance.email:
+            return Response(
+                {"error": _("Only the user the invitation belongs to can accept or decline.")},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         request_serializer = CourseInvitationStatusRequestSerializer(
             instance=instance, data=request.data, context=self.get_serializer_context()
         )
@@ -119,4 +192,4 @@ class CourseInvitationDetailView(GenericAPIView):
                     instance.course.students.add(request.user)
             instance.save()
 
-        return Response(status=status.HTTP_201_CREATED)
+        return Response(status=status.HTTP_200_OK)

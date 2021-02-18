@@ -42,12 +42,12 @@ course_attachment_detail_pattern = f"{course_attachment_pattern}<slug:attachment
 urlpatterns = [
     path(course_pattern, CourseView.as_view(), name="courses"),
     path(course_detail_pattern, CourseDetailView.as_view(), name="course-detail"),
-    path(course_invitation_pattern, CourseInvitationView.as_view(), name="course-invitation"),
-    path(course_invitation_detail_pattern, CourseInvitationDetailView.as_view(), name="course-invitation-detail"),
+    path(course_invitation_pattern, CourseInvitationView.as_view(), name="invitation"),
+    path(course_invitation_detail_pattern, CourseInvitationDetailView.as_view(), name="invitation-detail"),
     path(course_attachment_pattern, CourseAttachmentView.as_view(), name="course-attachment"),
     path(course_attachment_detail_pattern, CourseAttachmentDetailView.as_view(), name="course-attachment-detail"),
-    path(requirement_pattern, ProjectRequirementView.as_view(), name="project-requirement"),
-    path(requirement_detail_pattern, ProjectRequirementDetailView.as_view(), name="project-requirement-detail"),
+    path(requirement_pattern, ProjectRequirementView.as_view(), name="requirement"),
+    path(requirement_detail_pattern, ProjectRequirementDetailView.as_view(), name="requirement-detail"),
     path(
         requirement_team_pattern,
         TeamView.as_view(),
@@ -61,11 +61,11 @@ urlpatterns = [
     path(
         requirement_attachment_pattern,
         ProjectRequirementAttachmentView.as_view(),
-        name="project-requirement-attachment",
+        name="requirement-attachment",
     ),
     path(
         requirement_attachment_detail_pattern,
         ProjectRequirementAttachmentDetailView.as_view(),
-        name="project-requirement-attachment-detail",
+        name="requirement-attachment-detail",
     ),
 ]
