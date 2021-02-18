@@ -18,9 +18,9 @@ class CourseInvitationResponseSerializer(serializers.Serializer):
     Custom serializer used to represent response for course invitation view
     """
 
-    success = serializers.ListField(child=serializers.EmailField(), allow_empty=True)
+    success = serializers.ListField(child=serializers.EmailField(), allow_empty=True, required=True)
     fail = serializers.ListField(
-        child=serializers.DictField(child=serializers.CharField(), allow_empty=False), allow_empty=True
+        child=serializers.DictField(child=serializers.CharField(), allow_empty=False), allow_empty=True, required=True
     )
 
 
@@ -30,7 +30,7 @@ class CourseInvitationRequestSerializer(serializers.Serializer):
     Custom serializer used to represent requests for the course invitation view
     """
 
-    emails = serializers.ListField(child=serializers.EmailField(required=True), allow_empty=False)
+    emails = serializers.ListField(child=serializers.EmailField(required=True), allow_empty=False, required=True)
     course = serializers.UUIDField(required=True)
     expiry_date = serializers.DateTimeField(label="Expiry Date", required=True)
     type = serializers.ChoiceField(choices=CourseInvitation.INVITE_CHOICES, required=True)

@@ -1,4 +1,32 @@
 from django.conf import settings
+from rest_framework import serializers
+
+
+# ! This is mostly for swagger documentation purposes
+class FlexFieldsQuerySerializer(serializers.Serializer):
+    """
+    Custom serializer used to represent flex field query parameters
+    """
+
+    # TODO figure out a better way than using locals
+    locals()[settings.REST_FLEX_FIELDS["EXPAND_PARAM"]] = serializers.ListField(
+        child=serializers.ChoiceField(choices=()),
+        allow_empty=False,
+        required=False,
+        help_text="Consists of response fields. Note: not all fields are always supported.",
+    )
+    locals()[settings.REST_FLEX_FIELDS["OMIT_PARAM"]] = serializers.ListField(
+        child=serializers.ChoiceField(choices=()),
+        allow_empty=False,
+        required=False,
+        help_text="Consists of response fields. Note: not all fields are always supported.",
+    )
+    locals()[settings.REST_FLEX_FIELDS["FIELDS_PARAM"]] = serializers.ListField(
+        child=serializers.ChoiceField(choices=()),
+        allow_empty=False,
+        required=False,
+        help_text="Consists of response fields. Note: not all fields are always supported.",
+    )
 
 
 def get_flex_serializer_config(request) -> dict:

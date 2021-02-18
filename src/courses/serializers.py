@@ -142,6 +142,34 @@ class CourseAttachmentSerializer(FlexFieldsModelSerializer):
         extra_kwargs = {"course": {"write_only": True}}
 
 
+class CourseStudentSerializer(FlexFieldsModelSerializer):
+    """
+    A serializer responsible for handling CourseStudent instances.
+    """
+
+    class Meta:
+        model = CourseStudent
+        fields = ["student", "course"]
+        read_only_fields = ["course", "student"]
+        expandable_fields = {
+            "student": UserSerializer,
+        }
+
+
+class CourseTeacherSerializer(FlexFieldsModelSerializer):
+    """
+    A serializer responsible for handling CourseTeacher instances.
+    """
+
+    class Meta:
+        model = CourseTeacher
+        fields = ["teacher", "course"]
+        read_only_fields = ["course", "teacher"]
+        expandable_fields = {
+            "teacher": UserSerializer,
+        }
+
+
 class CourseSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling Course instances.

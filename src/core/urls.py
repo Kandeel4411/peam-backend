@@ -49,6 +49,7 @@ if getattr(settings, "REST_USE_JWT", False):
 # Api routes
 api_patterns = [
     path("api/v1/", include("courses.urls")),
+    path("api/v1/", include("users.urls")),
     path("api/v1/auth/", include(auth_patterns), name="rest_auth"),
 ]
 

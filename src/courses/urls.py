@@ -3,6 +3,8 @@ from django.urls import path, include
 from .invites.views import CourseInvitationView, CourseInvitationDetailView
 from .views import (
     CourseView,
+    CourseStudentView,
+    CourseTeacherView,
     CourseDetailView,
     TeamView,
     TeamDetailView,
@@ -23,6 +25,12 @@ course_detail_pattern = f"{course_pattern}<str:course_owner>/<str:course_code>/"
 course_invitation_pattern = f"{course_detail_pattern}invitations/"
 course_invitation_detail_pattern = f"{course_detail_pattern}invitations/<str:token>/"
 
+# Course student patterns
+course_student_pattern = f"{course_detail_pattern}students/"
+
+# Course teacher patterns
+course_teacher_pattern = f"{course_detail_pattern}teachers/"
+
 # Project requirement patterns
 requirement_pattern = f"{course_detail_pattern}requirements/"
 requirement_detail_pattern = f"{requirement_pattern}<str:requirement_title>/"
@@ -41,31 +49,33 @@ course_attachment_detail_pattern = f"{course_attachment_pattern}<slug:attachment
 
 urlpatterns = [
     path(course_pattern, CourseView.as_view(), name="courses"),
-    path(course_detail_pattern, CourseDetailView.as_view(), name="course-detail"),
-    path(course_invitation_pattern, CourseInvitationView.as_view(), name="invitation"),
-    path(course_invitation_detail_pattern, CourseInvitationDetailView.as_view(), name="invitation-detail"),
-    path(course_attachment_pattern, CourseAttachmentView.as_view(), name="course-attachment"),
-    path(course_attachment_detail_pattern, CourseAttachmentDetailView.as_view(), name="course-attachment-detail"),
-    path(requirement_pattern, ProjectRequirementView.as_view(), name="requirement"),
-    path(requirement_detail_pattern, ProjectRequirementDetailView.as_view(), name="requirement-detail"),
+    path(course_detail_pattern, CourseDetailView.as_view(), name="courses-detail"),
+    path(course_student_pattern, CourseStudentView.as_view(), name="students"),
+    path(course_teacher_pattern, CourseTeacherView.as_view(), name="teachers"),
+    path(course_invitation_pattern, CourseInvitationView.as_view(), name="invitations"),
+    path(course_invitation_detail_pattern, CourseInvitationDetailView.as_view(), name="invitations-detail"),
+    path(course_attachment_pattern, CourseAttachmentView.as_view(), name="course-attachments"),
+    path(course_attachment_detail_pattern, CourseAttachmentDetailView.as_view(), name="course-attachments-detail"),
+    path(requirement_pattern, ProjectRequirementView.as_view(), name="requirements"),
+    path(requirement_detail_pattern, ProjectRequirementDetailView.as_view(), name="requirements-detail"),
     path(
         requirement_team_pattern,
         TeamView.as_view(),
-        name="team",
+        name="teams",
     ),
     path(
         requirement_team_detail_pattern,
         TeamDetailView.as_view(),
-        name="team-detail",
+        name="teams-detail",
     ),
     path(
         requirement_attachment_pattern,
         ProjectRequirementAttachmentView.as_view(),
-        name="requirement-attachment",
+        name="requirement-attachments",
     ),
     path(
         requirement_attachment_detail_pattern,
         ProjectRequirementAttachmentDetailView.as_view(),
-        name="requirement-attachment-detail",
+        name="requirement-attachments-detail",
     ),
 ]

@@ -6,13 +6,23 @@ from django.db import transaction
 from drf_yasg.utils import swagger_auto_schema
 
 from core.utils.mixins import MultipleRequiredFieldLookupMixin
-from core.utils.flex_fields import get_flex_serializer_config
+from core.utils.flex_fields import get_flex_serializer_config, FlexFieldsQuerySerializer
 from core.utils.openapi import openapi_error_response
-from .models import Course, CourseStudent, Team, ProjectRequirement, CourseAttachment, ProjectRequirementAttachment
+from .models import (
+    Course,
+    CourseStudent,
+    CourseTeacher,
+    Team,
+    ProjectRequirement,
+    CourseAttachment,
+    ProjectRequirementAttachment,
+)
 from .serializers import (
     CourseSerializer,
     ProjectRequirementSerializer,
     CourseAttachmentSerializer,
+    CourseStudentSerializer,
+    CourseTeacherSerializer,
     TeamSerializer,
     ProjectRequirementAttachmentSerializer,
 )
@@ -54,6 +64,7 @@ class CourseView(GenericAPIView):
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseSerializer(),
         responses={
             status.HTTP_201_CREATED: CourseSerializer(),
@@ -67,9 +78,9 @@ class CourseView(GenericAPIView):
     )
     def post(self, request, *args, **kwargs) -> Response:
         """
-        Create a course instance.
+        Create a course.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
@@ -77,14 +88,16 @@ class CourseView(GenericAPIView):
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: CourseSerializer(many=True)})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseSerializer(many=True)}
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        List course instances.
+        List courses.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
-        instances = self.get_queryset()
+        instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"courses": serializer.data})
@@ -128,12 +141,14 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         return queryset
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: CourseSerializer()})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseSerializer()}
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        Retrieves a course instance.
+        Retrieves a course.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -142,6 +157,7 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseSerializer(),
         responses={
             status.HTTP_200_OK: CourseSerializer(),
@@ -155,9 +171,9 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     )
     def patch(self, request, *args, **kwargs) -> Response:
         """
-        Updates a course instance.
+        Updates a course.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -170,13 +186,91 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: CourseSerializer()})
     def delete(self, request, *args, **kwargs) -> Response:
         """
-        Deletes a course instance.
+        Deletes a course.
 
         Removes related objects
         """
         instance = self.get_object()
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class CourseStudentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for course students.
+    """
+
+    queryset = CourseStudent.objects.all()
+    serializer_class = CourseStudentSerializer
+    lookup_fields = {
+        "course_owner": "course__owner__username",
+        "course_code": "course__code",
+    }
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        # Optimizing queries
+        if is_expanded(self.request, "student"):
+            queryset = queryset.select_related("student")
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseStudentSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        List course students.
+
+        Expansion query params apply*
+        """
+        instances = self.filter_queryset(self.get_queryset())
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instances, many=True, **config)
+        return Response({"students": serializer.data})
+
+
+class CourseTeacherView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for course teacher.
+    """
+
+    queryset = CourseTeacher.objects.all()
+    serializer_class = CourseTeacherSerializer
+    lookup_fields = {
+        "course_owner": "course__owner__username",
+        "course_code": "course__code",
+    }
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        # Optimizing queries
+        if is_expanded(self.request, "teacher"):
+            queryset = queryset.select_related("teacher")
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseTeacherSerializer(many=True)}
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        List course teachers.
+
+        Expansion query params apply*
+        """
+        instances = self.filter_queryset(self.get_queryset())
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instances, many=True, **config)
+        return Response({"teachers": serializer.data})
 
 
 class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
@@ -205,20 +299,24 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         return queryset
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: ProjectRequirementSerializer(many=True)})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={status.HTTP_200_OK: ProjectRequirementSerializer(many=True)},
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        List project requirement instances.
+        List project requirements.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
-        instances = self.get_queryset()
+        instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"requirements": serializer.data})
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementSerializer(),
         responses={
             status.HTTP_201_CREATED: ProjectRequirementSerializer(),
@@ -232,9 +330,9 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     )
     def post(self, request, *args, **kwargs) -> Response:
         """
-        Create a project requirement instance.
+        Create a project requirement.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
@@ -270,12 +368,14 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
 
         return queryset
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: ProjectRequirementSerializer()})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: ProjectRequirementSerializer()}
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        Retrieves a project requirement instance.
+        Retrieves a project requirement.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -284,6 +384,7 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementSerializer(),
         responses={
             status.HTTP_200_OK: ProjectRequirementSerializer(),
@@ -297,9 +398,9 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
     )
     def patch(self, request, *args, **kwargs) -> Response:
         """
-        Updates a project requirement instance.
+        Updates a project requirement.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -312,7 +413,7 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
     @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ProjectRequirementSerializer()})
     def delete(self, request, *args, **kwargs) -> Response:
         """
-        Deletes a project requirement instance.
+        Deletes a project requirement.
 
         Removes related objects
         """
@@ -345,20 +446,23 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         return queryset
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: TeamSerializer(many=True)})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: TeamSerializer(many=True)}
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        List team instances.
+        List teams.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
-        instances = self.get_queryset()
+        instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"teams": serializer.data})
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=TeamSerializer(),
         responses={
             status.HTTP_201_CREATED: TeamSerializer(),
@@ -372,9 +476,9 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     )
     def post(self, request, *args, **kwargs) -> Response:
         """
-        Create a team instance.
+        Create a team.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
@@ -408,12 +512,12 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         return queryset
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: TeamSerializer()})
+    @swagger_auto_schema(query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: TeamSerializer()})
     def get(self, request, *args, **kwargs) -> Response:
         """
-        Retrieves a team instance.
+        Retrieves a team.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -422,6 +526,7 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=TeamSerializer(),
         responses={
             status.HTTP_201_CREATED: TeamSerializer(),
@@ -435,9 +540,9 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     )
     def patch(self, request, *args, **kwargs) -> Response:
         """
-        Updates a team instance.
+        Updates a team.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -450,7 +555,7 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: TeamSerializer()})
     def delete(self, request, *args, **kwargs) -> Response:
         """
-        Deletes a team instance.
+        Deletes a team.
 
         Removes related objects
         """
@@ -471,20 +576,24 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         "course_code": "course__code",
     }
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: CourseAttachmentSerializer(many=True)})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={status.HTTP_200_OK: CourseAttachmentSerializer(many=True)},
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
         List course attachments.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
-        instances = self.get_queryset()
+        instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"attachments": serializer.data})
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseAttachmentSerializer(),
         responses={
             status.HTTP_201_CREATED: CourseAttachmentSerializer(),
@@ -500,7 +609,7 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         """
         Create a course attachment.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
@@ -522,12 +631,14 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
         "attachment_uid": {"filter_kwarg": "uid", "pk": True},
     }
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: CourseAttachmentSerializer()})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseAttachmentSerializer()}
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        Retrieves a course attachment instance.
+        Retrieves a course attachment.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -536,6 +647,7 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseAttachmentSerializer(),
         responses={
             status.HTTP_201_CREATED: CourseAttachmentSerializer(),
@@ -549,9 +661,9 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
     )
     def patch(self, request, *args, **kwargs) -> Response:
         """
-        Updates a course attachment instance.
+        Updates a course attachment.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -564,7 +676,7 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
     @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: CourseAttachmentSerializer()})
     def delete(self, request, *args, **kwargs) -> Response:
         """
-        Deletes a course attachment instance.
+        Deletes a course attachment.
 
         Removes related objects
         """
@@ -586,20 +698,24 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
         "requirement_title": "requirement__title",
     }
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: ProjectRequirementAttachmentSerializer(many=True)})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={status.HTTP_200_OK: ProjectRequirementAttachmentSerializer(many=True)},
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
         List project requirement attachments.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
-        instances = self.get_queryset()
+        instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"attachments": serializer.data})
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementAttachmentSerializer(),
         responses={
             status.HTTP_201_CREATED: ProjectRequirementAttachmentSerializer(),
@@ -615,7 +731,7 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
         """
         Create a project requirement attachment.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
@@ -638,12 +754,15 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         "attachment_uid": {"filter_kwarg": "uid", "pk": True},
     }
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: ProjectRequirementAttachmentSerializer()})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={status.HTTP_200_OK: ProjectRequirementAttachmentSerializer()},
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        Retrieves a project requirement attachment instance.
+        Retrieves a project requirement attachment.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -652,6 +771,7 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
 
     @transaction.atomic
     @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementAttachmentSerializer(),
         responses={
             status.HTTP_200_OK: ProjectRequirementAttachmentSerializer(),
@@ -665,9 +785,9 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
     )
     def patch(self, request, *args, **kwargs) -> Response:
         """
-        Updates a project requirement attachment instance.
+        Updates a project requirement attachment.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instance = self.get_object()
         config = get_flex_serializer_config(request)
@@ -680,7 +800,7 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
     @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ProjectRequirementAttachmentSerializer()})
     def delete(self, request, *args, **kwargs) -> Response:
         """
-        Deletes a project requirement attachment instance.
+        Deletes a project requirement attachment.
 
         Removes related objects
         """

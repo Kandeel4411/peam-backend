@@ -10,7 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from drf_yasg.utils import swagger_auto_schema
 
 from core.utils.mixins import MultipleRequiredFieldLookupMixin
-from core.utils.flex_fields import get_flex_serializer_config
+from core.utils.flex_fields import get_flex_serializer_config, FlexFieldsQuerySerializer
 from core.utils.openapi import openapi_error_response
 from courses.models import CourseInvitation, Course
 from .serializers import (
@@ -35,10 +35,13 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         "course_code": "course__code",
     }
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: CourseInvitationSerializer(many=True)})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={status.HTTP_200_OK: CourseInvitationSerializer(many=True)},
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        Retrieves course invitation instances.
+        List course invitations.
 
         expansion query params apply*
         """
@@ -101,10 +104,12 @@ class CourseInvitationDetailView(GenericAPIView):
     serializer_class = CourseInvitationSerializer
     lookup_field = "token"
 
-    @swagger_auto_schema(responses={status.HTTP_200_OK: CourseInvitationSerializer()})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseInvitationSerializer()}
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
-        Retrieves a course invitation instance.
+        Retrieves a course invitation.
 
         expansion query params apply*
         """
