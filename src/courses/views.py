@@ -507,8 +507,8 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         """
         queryset = super().get_queryset()
 
-        # Since we are retrieving students always
-        queryset = queryset.prefetch_related("students")
+        if is_expanded(self.request, "students"):
+            queryset = queryset.prefetch_related("students")
 
         return queryset
 

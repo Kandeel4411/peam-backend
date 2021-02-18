@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
+from django.utils.translation import gettext_lazy as _
 
 User = get_user_model()
 
@@ -8,14 +9,18 @@ User = get_user_model()
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     fieldsets = (
-        *BaseUserAdmin.fieldsets,  # original form fieldsets, expanded
-        (  # new fieldset added on to the bottom
-            "Profile",  # group heading of your choice; set to None for a blank space instead of a header
+        # original form fieldsets, expanded
+        (None, {"fields": ("username", "password")}),
+        (_("Personal info"), {"fields": ("email", "first_name", "last_name", "avatar")}),
+        (
+            _("Permissions"),
             {
-                "fields": ("avatar",),
+                "fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions"),
             },
         ),
+        (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
+    readonly_fields = ("username",)
 
     def has_delete_permission(self, request, obj=None):
         return False

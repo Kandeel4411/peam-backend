@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Course, ProjectRequirement, Team, CourseInvitation
+from .models import Course, ProjectRequirement, Team, CourseInvitation, TeamInvitation
 from .inlines import (
     CourseAttachmentInline,
     CourseTeacherInline,
@@ -17,6 +17,11 @@ class TeamAdmin(admin.ModelAdmin):
 
 @admin.register(CourseInvitation)
 class CourseInvitationAdmin(admin.ModelAdmin):
+    pass
+
+
+@admin.register(TeamInvitation)
+class TeamInvitationAdmin(admin.ModelAdmin):
     pass
 
 

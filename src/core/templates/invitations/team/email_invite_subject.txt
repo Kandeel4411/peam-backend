@@ -1,0 +1,8 @@
+{% load i18n %}
+{% autoescape off %}
+{% blocktrans %}
+
+Team Invitation
+
+{% endblocktrans %}
+{% endautoescape %}

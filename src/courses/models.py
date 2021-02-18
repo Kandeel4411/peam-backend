@@ -172,7 +172,7 @@ class CourseInvitation(BaseInvitation):
 
     INVITE_CHOICES: tuple = ((STUDENT_INVITE, STUDENT_INVITE), (TEACHER_INVITE, TEACHER_INVITE))
 
-    email = models.EmailField(blank=False, null=False, unique=True, verbose_name=_("Email address"))
+    email = models.EmailField(blank=False, null=False, verbose_name=_("Email address"))
     type = models.CharField(choices=INVITE_CHOICES, max_length=30, blank=False, null=False)
     course = models.ForeignKey(Course, to_field="uid", on_delete=models.CASCADE, related_name="invitations")
 
@@ -182,7 +182,7 @@ class CourseInvitation(BaseInvitation):
         verbose_name = "Course Invitation"
         verbose_name_plural = "Course Invitations"
         constraints = BaseInvitation.Meta.constraints + [
-            models.UniqueConstraint(fields=["email", "type", "course"], name="unique_course_invitation")
+            models.UniqueConstraint(fields=["email", "course"], name="unique_course_invitation")
         ]
 
     def __str__(self) -> str:
@@ -216,7 +216,7 @@ class CourseInvitation(BaseInvitation):
             invitation: cls = cls.objects.create(*args, **kwargs)
 
             # Adding Invitation token as a query param to the invite url
-            invite_url += f"?{settings.FRONTEND_INVITATION_TOKEN_PARAM}={invitation.token}"
+            invite_url += f"?{settings.FRONTEND_COURSE_INVITATION_PARAM}={invitation.token}"
 
             # Show sender full name if its present
             sender = invitation.sender
@@ -230,6 +230,84 @@ class CourseInvitation(BaseInvitation):
                 "email": invitation.email,
                 "site_name": site.domain,
                 "course": invitation.course.title,
+                "sender": sender,
+                "expiry_date": f"{timezone.localtime(invitation.expiry_date):%Y-%m-%d}",
+            }
+            adapter.send_mail(email_template_prefix, invitation.email, email_template_ctx)
+
+            return invitation
+
+
+class TeamInvitation(BaseInvitation):
+    email = models.EmailField(blank=False, null=False, verbose_name=_("Email address"))
+    team = models.ForeignKey(Team, to_field="uid", on_delete=models.CASCADE, related_name="invitations")
+
+    def validate_unique(self, *args, **kwargs) -> None:
+        """
+        Custom validate unique method
+        """
+        super().validate_unique(*args, **kwargs)
+
+        # Enforcing that student can only belong to one team in each project requirement
+        if TeamStudent.objects.filter(student__email=self.email, team__requirement=self.team.requirement).exists():
+            raise ValidationError(
+                message="A team student with this (email, requirement) already exists.",
+            )
+
+    class Meta(BaseInvitation.Meta):
+        abstract = False
+        managed = True
+        verbose_name = "Team Invitation"
+        verbose_name_plural = "Team Invitations"
+        constraints = BaseInvitation.Meta.constraints + [
+            models.UniqueConstraint(fields=["email", "team"], name="unique_team_invitation")
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.sender} invited {self.email} to {self.team}"
+
+    @classmethod
+    def send_invitation(
+        cls, request, email_template_prefix="invitations/team/email_invite", *args, **kwargs
+    ) -> "CourseInvitation":
+        """
+        Helper method that wraps creation of a team invitation and sends an email and
+        returns created team invitation instance if successful.
+
+        :request: django http request
+
+        :email_template: template that is going to be used for
+        the invitation(site_name, email, invite_url, expiry_date, sender and team are available in ctx)
+
+        :*args, **kwargs: arguments that are going to be directly passed to ORM object creation
+
+        *Note:* This method should generally be used instead of manual creation of team invitation as
+        it ensures that if creation fails, an email wont be sent and vice versa
+        """
+
+        adapter = get_adapter(request)
+        site = get_current_site(request)
+        protocol: str = settings.ACCOUNT_DEFAULT_HTTP_PROTOCOL
+        invite_url: str = f"{protocol}://{site.domain}{reverse('login')}"
+
+        with transaction.atomic():
+            invitation: cls = cls.objects.create(*args, **kwargs)
+
+            # Adding Invitation token as a query param to the invite url
+            invite_url += f"?{settings.FRONTEND_TEAM_INVITATION_PARAM}={invitation.token}"
+
+            # Show sender full name if its present
+            sender = invitation.sender
+            if sender.full_name is None:
+                sender = sender.username
+            else:
+                sender = sender.full_name.title()
+
+            email_template_ctx = {
+                "invite_url": invite_url,
+                "team": invitation.team.name,
+                "site_name": site.domain,
+                "email": invitation.email,
                 "sender": sender,
                 "expiry_date": f"{timezone.localtime(invitation.expiry_date):%Y-%m-%d}",
             }

@@ -8,16 +8,21 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from drf_yasg.utils import swagger_auto_schema
+from rest_flex_fields import is_expanded
 
 from core.utils.mixins import MultipleRequiredFieldLookupMixin
 from core.utils.flex_fields import get_flex_serializer_config, FlexFieldsQuerySerializer
 from core.utils.openapi import openapi_error_response
-from courses.models import CourseInvitation, Course
+from courses.models import CourseInvitation, Course, TeamInvitation, Team, TeamStudent
 from .serializers import (
     CourseInvitationSerializer,
     CourseInvitationResponseSerializer,
     CourseInvitationRequestSerializer,
     CourseInvitationStatusRequestSerializer,
+    TeamInvitationSerializer,
+    TeamInvitationResponseSerializer,
+    TeamInvitationRequestSerializer,
+    TeamInvitationStatusRequestSerializer,
 )
 
 User = get_user_model()
@@ -35,6 +40,17 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         "course_code": "course__code",
     }
 
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        if is_expanded(self.request, "sender"):
+            queryset = queryset.select_related("sender")
+
+        return queryset
+
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         responses={status.HTTP_200_OK: CourseInvitationSerializer(many=True)},
@@ -43,7 +59,7 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         """
         List course invitations.
 
-        expansion query params apply*
+        Expansion query params apply*
         """
         instances = self.get_queryset()
         config = get_flex_serializer_config(request)
@@ -97,12 +113,25 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
 class CourseInvitationDetailView(GenericAPIView):
     """
-    Base view for a specific course invitation requirement.
+    Base view for a specific course invitation.
     """
 
     queryset = CourseInvitation.objects.all()
     serializer_class = CourseInvitationSerializer
     lookup_field = "token"
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        if is_expanded(self.request, "sender"):
+            queryset = queryset.select_related("sender")
+        if is_expanded(self.request, "course"):
+            queryset = queryset.select_related("course")
+
+        return queryset
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseInvitationSerializer()}
@@ -123,9 +152,9 @@ class CourseInvitationDetailView(GenericAPIView):
         responses={
             status.HTTP_204_NO_CONTENT: "",
             status.HTTP_400_BAD_REQUEST: openapi_error_response(
-                description="Only course owner can delete an invitation.",
+                description="Only the course owner can delete an invitation.",
                 examples={
-                    "error": "Only course owner can delete an invitation.",
+                    "error": "Only the course owner can delete the invitation.",
                 },
             ),
         }
@@ -134,14 +163,14 @@ class CourseInvitationDetailView(GenericAPIView):
         """
         Deletes a course invitation.
 
-        Only course owner can delete a course invitation
+        Only the course owner can delete the course invitation.
         """
         instance = self.get_object()
 
         # Only course owner can delete a course invitation
         if instance.course.owner != request.user:
             return Response(
-                {"error": _("Only course owner can delete an invitation.")}, status=status.HTTP_400_BAD_REQUEST
+                {"error": _("Only the course owner can delete the invitation.")}, status=status.HTTP_400_BAD_REQUEST
             )
         else:
             instance.delete()
@@ -167,12 +196,13 @@ class CourseInvitationDetailView(GenericAPIView):
     )
     def post(self, request, *args, **kwargs) -> Response:
         """
-        User response to course invitation
+        User response to a course invitation.
 
-        Acceptance or denial of a course invitation instance.
+        Acceptance or denial of a course invitation.
         """
         instance = self.get_object()
 
+        # TODO Move this check to the serializer for better integrity
         # Only the user the invitation email belongs to can continue
         if request.user.email != instance.email:
             return Response(
@@ -195,6 +225,213 @@ class CourseInvitationDetailView(GenericAPIView):
                     instance.course.teachers.add(request.user)
                 elif instance.type == CourseInvitation.STUDENT_INVITE:
                     instance.course.students.add(request.user)
+            instance.save()
+
+        return Response(status=status.HTTP_200_OK)
+
+
+class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for team invitations
+    """
+
+    queryset = TeamInvitation.objects.all()
+    serializer_class = TeamInvitationSerializer
+    lookup_fields = {
+        "course_owner": "team__requirement__course__owner__username",
+        "course_code": "team__requirement__course__code",
+        "requirement_title": "team__requirement__title",
+    }
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        if is_expanded(self.request, "sender"):
+            queryset = queryset.select_related("sender")
+        if is_expanded(self.request, "team"):
+            queryset = queryset.select_related("team")
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={status.HTTP_200_OK: TeamInvitationSerializer(many=True)},
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        List team invitations.
+
+        Expansion query params apply*
+        """
+        instances = self.get_queryset()
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instances, many=True, **config)
+        return Response({"invitations": serializer.data})
+
+    @swagger_auto_schema(
+        request_body=TeamInvitationRequestSerializer(),
+        responses={
+            status.HTTP_200_OK: TeamInvitationResponseSerializer(),
+            status.HTTP_400_BAD_REQUEST: openapi_error_response(
+                description="Resource specific errors.",
+                examples={
+                    "property": "error message.",
+                },
+            ),
+        },
+    )
+    def post(self, request, *args, **kwargs) -> Response:
+        """
+        Send a team invitation.
+
+        Always returns 200
+        """
+        request_serializer = TeamInvitationRequestSerializer(data=request.data)
+        request_serializer.is_valid(raise_exception=True)
+
+        emails = request_serializer.validated_data.pop("emails")
+        data = request_serializer.validated_data
+
+        # Sending team invite for each email
+        success = []
+        fail = []
+        for email in emails:
+            data["email"] = email
+            serializer = self.get_serializer(data=data)
+            if serializer.is_valid(raise_exception=False):
+                serializer.save()
+                success.append(email)
+            else:
+                fail.append(
+                    {
+                        "email": email,
+                        # Retrieving serializer error to display
+                        "error": list(serializer.errors.values())[0],
+                    }
+                )
+
+        return Response({"success": success, "fail": fail}, status=status.HTTP_200_OK)
+
+
+class TeamInvitationDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for a specific team invitation.
+    """
+
+    queryset = TeamInvitation.objects.all()
+    serializer_class = TeamInvitationSerializer
+    lookup_fields = {
+        "course_owner": "team__requirement__course__owner__username",
+        "course_code": "team__requirement__course__code",
+        "requirement_title": "team__requirement__title",
+        "invitation_token": {"filter_kwarg": "token", "pk": True},
+    }
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        if is_expanded(self.request, "sender"):
+            queryset = queryset.select_related("sender")
+        if is_expanded(self.request, "team"):
+            queryset = queryset.select_related("team")
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: TeamInvitationSerializer()}
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        Retrieves a team invitation.
+
+        Expansion query params apply*
+        """
+        instance = self.get_object()
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instance, **config)
+        return Response(serializer.data)
+
+    @transaction.atomic
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_400_BAD_REQUEST: openapi_error_response(
+                description="Only a team member can delete an invitation.",
+                examples={
+                    "error": "Only a team member can delete the invitation.",
+                },
+            ),
+        }
+    )
+    def delete(self, request, *args, **kwargs) -> Response:
+        """
+        Deletes a team invitation.
+
+        Only a team member can delete the invitation.
+        """
+        instance = self.get_object()
+
+        # Only a team member can delete an invitation
+        if not TeamStudent.objects.filter(team=instance.team, student=request.user).exists():
+            return Response(
+                {"error": _("Only a team member can delete the invitation.")}, status=status.HTTP_400_BAD_REQUEST
+            )
+        else:
+            instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @swagger_auto_schema(
+        request_body=TeamInvitationStatusRequestSerializer(),
+        responses={
+            status.HTTP_200_OK: "",
+            status.HTTP_400_BAD_REQUEST: openapi_error_response(
+                description="Resource specific errors.",
+                examples={
+                    "property": "error message.",
+                },
+            ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Only the user the invitation belongs to can accept or decline.",
+                examples={
+                    "error": "Only the user the invitation belongs to can accept or decline.",
+                },
+            ),
+        },
+    )
+    def post(self, request, *args, **kwargs) -> Response:
+        """
+        User response to a team invitation.
+
+        Acceptance or denial of a team invitation instance.
+        """
+        instance = self.get_object()
+
+        # TODO Move this check to the serializer for better integrity
+        # Only the user the invitation email belongs to can continue
+        if request.user.email != instance.email:
+            return Response(
+                {"error": _("Only the user the invitation belongs to can accept or decline.")},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        request_serializer = TeamInvitationStatusRequestSerializer(
+            instance=instance, data=request.data, context=self.get_serializer_context()
+        )
+        request_serializer.is_valid(raise_exception=True)
+
+        invite_status = request_serializer.validated_data["status"]
+
+        # TODO remove manual updating for serializer instead
+        with transaction.atomic():
+            instance.status = invite_status
+            if status == TeamInvitation.ACCEPTED:
+                instance.team.students.add(request.user)
             instance.save()
 
         return Response(status=status.HTTP_200_OK)
