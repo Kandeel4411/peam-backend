@@ -139,7 +139,7 @@ class CourseInvitationDetailView(GenericAPIView):
         instance = self.get_object()
 
         # Only course owner can delete a course invitation
-        if instance.owner != request.user:
+        if instance.course.owner != request.user:
             return Response(
                 {"error": _("Only course owner can delete an invitation.")}, status=status.HTTP_400_BAD_REQUEST
             )
