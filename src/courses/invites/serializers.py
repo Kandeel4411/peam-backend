@@ -2,6 +2,7 @@ from allauth.account.adapter import get_adapter
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_flex_fields import FlexFieldsModelSerializer
 from django.utils.translation import gettext_lazy as _
 from django.contrib.sites.shortcuts import get_current_site
 
@@ -38,8 +39,6 @@ class CourseInvitationRequestSerializer(serializers.Serializer):
 class CourseInvitationStatusRequestSerializer(serializers.Serializer):
     """
     Custom serializer used to represent acceptance/denial status requests for the course invitation view
-
-    *Note:* request is expected to be included in the context.
     """
 
     status = serializers.ChoiceField(choices=(CourseInvitation.ACCEPTED, CourseInvitation.REJECTED), required=True)
@@ -52,13 +51,6 @@ class CourseInvitationStatusRequestSerializer(serializers.Serializer):
             raise NotImplementedError("A CourseInvitation instance must be passed to the serializer for validation.")
 
         instance: CourseInvitation = self.instance
-        user: User = self.context["request"].user
-
-        # Only the user the invitation email belongs to can continue
-        if user.email != instance.email:
-            raise serializers.ValidationError(
-                detail={"email": _("Only the user the invitation belongs to can accept or decline.")}, code=403
-            )
 
         # Status is already accepted
         if instance.status == CourseInvitation.ACCEPTED:
@@ -75,12 +67,14 @@ class CourseInvitationStatusRequestSerializer(serializers.Serializer):
         return super().validate(data)
 
 
-class CourseInvitationSerializer(serializers.ModelSerializer):
+class CourseInvitationSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling course invitation instances.
 
     *Note:* request is expected to be included in the context.
     """
+
+    sender = serializers.SlugRelatedField(slug_field="uid", many=False, read_only=True)
 
     class Meta:
         model = CourseInvitation
@@ -91,6 +85,10 @@ class CourseInvitationSerializer(serializers.ModelSerializer):
                 queryset=CourseInvitation.objects.all(), fields=["course", "email", "type"]
             )
         ]
+        expandable_fields = {
+            "sender": "users.UserSerializer",
+            "course": ("courses.CourseSerializer", {"fields": ["title", "code", "description"]}),
+        }
 
     def validate(self, data: dict) -> dict:
         """
@@ -103,6 +101,10 @@ class CourseInvitationSerializer(serializers.ModelSerializer):
             sender: User = self.context["request"].user
             invite_type: str = data["type"]
             course: Course = data["course"]
+
+            # The owner can't invite himself
+            if course.owner.email == sender.email:
+                raise serializers.ValidationError(detail={"email": _("Owner can't invite himself to the course")})
 
             # If the invite is for a teacher then only the course owner can invite them
             if course.owner != sender and invite_type == CourseInvitation.TEACHER_INVITE:

@@ -6,6 +6,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django.contrib.postgres.fields import CICharField
+from django.core.exceptions import ValidationError
 from allauth.account.adapter import get_adapter
 from django.contrib.sites.shortcuts import get_current_site
 from django.urls import reverse
@@ -143,6 +144,18 @@ class TeamStudent(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE)
     team = models.ForeignKey(Team, to_field="uid", on_delete=models.CASCADE)
 
+    def validate_unique(self, *args, **kwargs) -> None:
+        """
+        Custom validate unique method
+        """
+        super().validate_unique(*args, **kwargs)
+
+        # Enforcing that student can only belong to one team in each project requirement
+        if self.__class__.objects.filter(student=self.student, team__requirement=self.team.requirement).exists():
+            raise ValidationError(
+                message=f"{self.__class__} with this (student, requirement) already exists.",
+            )
+
     class Meta:
         managed = True
         verbose_name = "Team Student"
@@ -202,7 +215,8 @@ class CourseInvitation(BaseInvitation):
         with transaction.atomic():
             invitation = cls.objects.create(*args, **kwargs)
 
-            invite_url += f"?token={invitation.token}"  # Adding Invitation token as a query param to the invite url
+            # Adding Invitation token as a query param to the invite url
+            invite_url += f"?{settings.FRONTEND_INVITATION_TOKEN_PARAM}={invitation.token}"
             email_template_ctx = {"invite_url": invite_url, "email": invitation.email, "site_name": site.domain}
             adapter.send_mail(email_template_prefix, invitation.email, email_template_ctx)
 
