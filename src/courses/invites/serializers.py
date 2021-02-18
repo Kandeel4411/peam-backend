@@ -78,7 +78,7 @@ class CourseInvitationSerializer(FlexFieldsModelSerializer):
 
     class Meta:
         model = CourseInvitation
-        fields = ["sender", "course", "type", "status", "email", "expiry_date", "created_at"]
+        fields = ["token", "sender", "course", "type", "status", "email", "expiry_date", "created_at"]
         read_only_fields = ["sender"]
         validators = [
             serializers.UniqueTogetherValidator(
