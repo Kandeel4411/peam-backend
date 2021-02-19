@@ -82,11 +82,6 @@ class CourseInvitationSerializer(FlexFieldsModelSerializer):
         model = CourseInvitation
         fields = ["token", "sender", "course", "type", "status", "email", "expiry_date", "created_at"]
         read_only_fields = ["token", "sender"]
-        validators = [
-            serializers.UniqueTogetherValidator(
-                queryset=CourseInvitation.objects.all(), fields=["course", "email", "type"]
-            )
-        ]
         expandable_fields = {
             "sender": "users.UserSerializer",
             "course": (
@@ -117,6 +112,7 @@ class CourseInvitationSerializer(FlexFieldsModelSerializer):
                 raise serializers.ValidationError(
                     detail={"type": _("Only the course owner can invite other teachers.")}
                 )
+            # Only the course teachers can invite
             if not course.teachers.filter(pk=sender.pk).exists():
                 raise serializers.ValidationError(detail={"sender": _("Only the course teachers can invite.")})
 
@@ -221,9 +217,6 @@ class TeamInvitationSerializer(FlexFieldsModelSerializer):
         model = TeamInvitation
         fields = ["token", "sender", "team", "status", "email", "expiry_date", "created_at"]
         read_only_fields = ["token", "sender"]
-        validators = [
-            serializers.UniqueTogetherValidator(queryset=TeamInvitation.objects.all(), fields=["team", "email"])
-        ]
         expandable_fields = {
             "sender": "users.UserSerializer",
             "team": ("courses.TeamSerializer", {settings.REST_FLEX_FIELDS["FIELDS_PARAM"]: ["name", "requirement"]}),

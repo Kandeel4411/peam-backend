@@ -144,6 +144,15 @@ class TeamStudent(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE)
     team = models.ForeignKey(Team, to_field="uid", on_delete=models.CASCADE)
 
+    class Meta:
+        managed = True
+        verbose_name = "Team Student"
+        verbose_name_plural = "Team Students"
+        constraints = [models.UniqueConstraint(fields=["student", "team"], name="unique_team_student")]
+
+    def __str__(self) -> str:
+        return f"{self.student} - {self.team}"
+
     def validate_unique(self, *args, **kwargs) -> None:
         """
         Custom validate unique method
@@ -155,15 +164,6 @@ class TeamStudent(models.Model):
             raise ValidationError(
                 message=f"{self.__class__} with this (student, requirement) already exists.",
             )
-
-    class Meta:
-        managed = True
-        verbose_name = "Team Student"
-        verbose_name_plural = "Team Students"
-        constraints = [models.UniqueConstraint(fields=["student", "team"], name="unique_team_student")]
-
-    def __str__(self) -> str:
-        return f"{self.student} - {self.team}"
 
 
 class CourseInvitation(BaseInvitation):
@@ -181,9 +181,31 @@ class CourseInvitation(BaseInvitation):
         managed = True
         verbose_name = "Course Invitation"
         verbose_name_plural = "Course Invitations"
-        constraints = BaseInvitation.Meta.constraints + [
-            models.UniqueConstraint(fields=["email", "course"], name="unique_course_invitation")
-        ]
+        constraints = BaseInvitation.Meta.constraints
+
+    def validate_unique(self, *args, **kwargs) -> None:
+        """
+        Custom validate unique method
+        """
+        super().validate_unique(*args, **kwargs)
+
+        # If already in the course as either a student or a teacher then return an error
+        if CourseStudent.filter(student__email=self.email, course=self.course).exists():
+            raise ValidationError(
+                message="A course student with this (email, course) already exists.",
+            )
+        elif CourseTeacher.filter(student__email=self.email, course=self.course).exists():
+            raise ValidationError(
+                message="A course teacher with this (email, course) already exists.",
+            )
+
+        # Enforcing the uniqueness of email to course if an existing invite didn't expire or was rejected and accepted
+        invitations = CourseInvitation.objects.filter(email=self.email, course=self.course)
+        for invitation in invitations:
+            if invitation.status == self.PENDING:
+                raise ValidationError(
+                    message="A course invitation with this (email, course) already exists that is pending."
+                )
 
     def __str__(self) -> str:
         return f"{self.sender} invited {self.email}[{self.type}] to {self.course}"
@@ -242,6 +264,16 @@ class TeamInvitation(BaseInvitation):
     email = models.EmailField(blank=False, null=False, verbose_name=_("Email address"))
     team = models.ForeignKey(Team, to_field="uid", on_delete=models.CASCADE, related_name="invitations")
 
+    class Meta(BaseInvitation.Meta):
+        abstract = False
+        managed = True
+        verbose_name = "Team Invitation"
+        verbose_name_plural = "Team Invitations"
+        constraints = BaseInvitation.Meta.constraints
+
+    def __str__(self) -> str:
+        return f"{self.sender} invited {self.email} to {self.team}"
+
     def validate_unique(self, *args, **kwargs) -> None:
         """
         Custom validate unique method
@@ -254,17 +286,13 @@ class TeamInvitation(BaseInvitation):
                 message="A team student with this (email, requirement) already exists.",
             )
 
-    class Meta(BaseInvitation.Meta):
-        abstract = False
-        managed = True
-        verbose_name = "Team Invitation"
-        verbose_name_plural = "Team Invitations"
-        constraints = BaseInvitation.Meta.constraints + [
-            models.UniqueConstraint(fields=["email", "team"], name="unique_team_invitation")
-        ]
-
-    def __str__(self) -> str:
-        return f"{self.sender} invited {self.email} to {self.team}"
+        # Enforcing the uniqueness of email to team if an existing invite didn't expire or was rejected and accepted
+        invitations = TeamInvitation.objects.filter(email=self.email, course=self.course)
+        for invitation in invitations:
+            if invitation.status == self.PENDING:
+                raise ValidationError(
+                    message="A team invitation with this (email, team) already exists that is pending."
+                )
 
     @classmethod
     def send_invitation(
