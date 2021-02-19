@@ -28,7 +28,7 @@ course_detail_pattern = f"{course_pattern}<str:course_owner>/<str:course_code>/"
 
 # Course invitation patterns
 course_invitation_pattern = f"{course_detail_pattern}invitations/"
-course_invitation_detail_pattern = f"{course_invitation_pattern}<str:token>/"
+course_invitation_detail_pattern = f"{course_pattern}invitations/<str:token>/"
 
 # Course student patterns
 course_student_pattern = f"{course_detail_pattern}students/"
@@ -50,7 +50,7 @@ requirement_team_detail_pattern = f"{requirement_team_pattern}<str:team_name>/"
 
 # Project requirement team invitation patterns
 requirement_team_invitation_pattern = f"{requirement_team_detail_pattern}invitations/"
-requirement_team_invitation_detail_pattern = f"{requirement_team_invitation_pattern}<str:invitation_token>/"
+requirement_team_invitation_detail_pattern = f"{course_pattern}requirements/teams/invitations/<str:token>/"
 
 # Course attachment patterns
 course_attachment_pattern = f"{course_detail_pattern}attachments/"

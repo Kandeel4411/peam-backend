@@ -238,7 +238,7 @@ class CourseInvitation(BaseInvitation):
             invitation: cls = cls.objects.create(*args, **kwargs)
 
             # Adding Invitation token as a query param to the invite url
-            invite_url += f"?{settings.FRONTEND_COURSE_INVITATION_PARAM}={invitation.token}"
+            invite_url += f"{settings.FRONTEND_COURSE_INVITATION_PARAM}={invitation.token}"
 
             # Show sender full name if its present
             sender = invitation.sender
@@ -322,7 +322,7 @@ class TeamInvitation(BaseInvitation):
             invitation: cls = cls.objects.create(*args, **kwargs)
 
             # Adding Invitation token as a query param to the invite url
-            invite_url += f"?{settings.FRONTEND_TEAM_INVITATION_PARAM}={invitation.token}"
+            invite_url += f"{settings.FRONTEND_TEAM_INVITATION_PARAM}={invitation.token}"
 
             # Show sender full name if its present
             sender = invitation.sender

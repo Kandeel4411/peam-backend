@@ -316,19 +316,14 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return Response({"success": success, "fail": fail}, status=status.HTTP_200_OK)
 
 
-class TeamInvitationDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+class TeamInvitationDetailView(GenericAPIView):
     """
     Base view for a specific team invitation.
     """
 
     queryset = TeamInvitation.objects.all()
     serializer_class = TeamInvitationSerializer
-    lookup_fields = {
-        "course_owner": "team__requirement__course__owner__username",
-        "course_code": "team__requirement__course__code",
-        "requirement_title": "team__requirement__title",
-        "invitation_token": {"filter_kwarg": "token", "pk": True},
-    }
+    lookup_field = "token"
 
     def get_queryset(self):
         """
