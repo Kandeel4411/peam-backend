@@ -58,11 +58,16 @@ course_attachment_detail_pattern = f"{course_attachment_pattern}<slug:attachment
 
 urlpatterns = [
     path(course_pattern, CourseView.as_view(), name="courses"),
+    path(course_invitation_detail_pattern, CourseInvitationDetailView.as_view(), name="course-invitations-detail"),
+    path(
+        requirement_team_invitation_detail_pattern,
+        TeamInvitationDetailView.as_view(),
+        name="team-invitations-detail",
+    ),
     path(course_detail_pattern, CourseDetailView.as_view(), name="courses-detail"),
     path(course_student_pattern, CourseStudentView.as_view(), name="students"),
     path(course_teacher_pattern, CourseTeacherView.as_view(), name="teachers"),
     path(course_invitation_pattern, CourseInvitationView.as_view(), name="course-invitations"),
-    path(course_invitation_detail_pattern, CourseInvitationDetailView.as_view(), name="course-invitations-detail"),
     path(course_attachment_pattern, CourseAttachmentView.as_view(), name="course-attachments"),
     path(course_attachment_detail_pattern, CourseAttachmentDetailView.as_view(), name="course-attachments-detail"),
     path(requirement_pattern, ProjectRequirementView.as_view(), name="requirements"),
@@ -78,6 +83,11 @@ urlpatterns = [
         name="teams-detail",
     ),
     path(
+        requirement_team_invitation_pattern,
+        TeamInvitationView.as_view(),
+        name="team-invitations",
+    ),
+    path(
         requirement_attachment_pattern,
         ProjectRequirementAttachmentView.as_view(),
         name="requirement-attachments",
@@ -86,15 +96,5 @@ urlpatterns = [
         requirement_attachment_detail_pattern,
         ProjectRequirementAttachmentDetailView.as_view(),
         name="requirement-attachments-detail",
-    ),
-    path(
-        requirement_team_invitation_pattern,
-        TeamInvitationView.as_view(),
-        name="team-invitations",
-    ),
-    path(
-        requirement_team_invitation_detail_pattern,
-        TeamInvitationDetailView.as_view(),
-        name="team-invitations-detail",
     ),
 ]
