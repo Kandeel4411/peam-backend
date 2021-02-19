@@ -5,7 +5,6 @@ from rest_framework.response import Response
 from rest_framework import status, serializers
 from django.db import transaction
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from drf_yasg.utils import swagger_auto_schema
 from rest_flex_fields import is_expanded
@@ -24,8 +23,6 @@ from .serializers import (
     TeamInvitationRequestSerializer,
     TeamInvitationStatusRequestSerializer,
 )
-
-User = get_user_model()
 
 
 class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):

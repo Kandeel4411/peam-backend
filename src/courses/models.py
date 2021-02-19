@@ -250,7 +250,8 @@ class CourseInvitation(BaseInvitation):
         :email_template: template that is going to be used for
         the invitation(site_name, email, invite_url, expiry_date, sender and course are available in ctx)
 
-        :*args, **kwargs: arguments that are going to be directly passed to ORM object creation
+        :*args, **kwargs: arguments that are going to be directly passed to default manager object creation
+        method.
 
         *Note:* This method should generally be used instead of manual creation of course invitation as
         it ensures that if creation fails, an email wont be sent and vice versa
@@ -329,7 +330,8 @@ class TeamInvitation(BaseInvitation):
         :email_template: template that is going to be used for
         the invitation(site_name, email, invite_url, expiry_date, sender and team are available in ctx)
 
-        :*args, **kwargs: arguments that are going to be directly passed to ORM object creation
+        :*args, **kwargs: arguments that are going to be directly passed to default manager object creation
+        method.
 
         *Note:* This method should generally be used instead of manual creation of team invitation as
         it ensures that if creation fails, an email wont be sent and vice versa

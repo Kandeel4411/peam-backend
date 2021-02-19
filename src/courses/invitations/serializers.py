@@ -91,12 +91,13 @@ class CourseInvitationStatusRequestSerializer(serializers.Serializer):
             user = self.context["request"].user
 
             # Adding user to either teachers or students if accepted
-            if instance.type == InvitationStatus.TEACHER_INVITE:
+            if instance.type == CourseInvitationType.TEACHER_INVITE:
                 instance.course.teachers.add(user)
-            elif instance.type == InvitationStatus.STUDENT_INVITE:
+            elif instance.type == CourseInvitationType.STUDENT_INVITE:
                 instance.course.students.add(user)
 
         instance.save()
+        return instance
 
 
 class CourseInvitationSerializer(FlexFieldsModelSerializer):
