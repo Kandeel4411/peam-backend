@@ -2,6 +2,7 @@ import uuid
 from typing import Optional
 
 from django.db import models, transaction
+from django.db import IntegrityError
 from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -13,6 +14,7 @@ from django.urls import reverse
 
 from core.utils.tz import local_timezone_now
 from core.models import BaseInvitation
+from .constants import CourseInvitationType
 
 
 class Course(models.Model):
@@ -50,6 +52,16 @@ class CourseTeacher(models.Model):
     def __str__(self) -> str:
         return f"{self.teacher} - {self.course}"
 
+    def clean(self) -> None:
+        """
+        Model level validation hook
+        """
+        # Enforcing that if already in the course as a student then return an error
+        if CourseStudent._default_manager.filter(student=self.teacher, course=self.course).exists():
+            raise ValidationError(
+                {"course": _("Can't be both a teacher and a student to the same course.")},
+            )
+
 
 class CourseStudent(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE)
@@ -63,6 +75,16 @@ class CourseStudent(models.Model):
 
     def __str__(self) -> str:
         return f"{self.student} - {self.course}"
+
+    def clean(self) -> None:
+        """
+        Model level validation hook
+        """
+        # Enforcing that if already in the course as a teacher then return an error
+        if CourseTeacher._default_manager.filter(teacher=self.student, course=self.course).exists():
+            raise ValidationError(
+                {"course": _("Can't be both a student and a teacher to the same course.")},
+            )
 
 
 class ProjectRequirement(models.Model):
@@ -135,6 +157,7 @@ class Team(models.Model):
         verbose_name = "Team"
         verbose_name_plural = "Teams"
         constraints = [models.UniqueConstraint(fields=["name", "requirement"], name="unique_team")]
+        indexes = [models.Index(fields=["requirement"])]
 
     def __str__(self) -> str:
         return f"{self.name} - {self.requirement}"
@@ -160,20 +183,28 @@ class TeamStudent(models.Model):
         super().validate_unique(*args, **kwargs)
 
         # Enforcing that student can only belong to one team in each project requirement
-        if self.__class__.objects.filter(student=self.student, team__requirement=self.team.requirement).exists():
+        if self.__class__._default_manager.filter(
+            ~models.Q(pk=self.pk), student=self.student, team__requirement=self.team.requirement
+        ).exists():
             raise ValidationError(
-                message=f"{self.__class__} with this (student, requirement) already exists.",
+                {"student": _("Student already belongs to another team.")},
             )
+
+    def delete(self, *args, **kwargs):
+        """
+        Custom deletion call
+        """
+        student_count = self.__class__._default_manager.filter(team=self.team).count()
+        super().delete(*args, **kwargs)
+
+        # This is the last team student
+        if student_count == 1:
+            self.team.delete()
 
 
 class CourseInvitation(BaseInvitation):
-    STUDENT_INVITE: str = "student"
-    TEACHER_INVITE: str = "teacher"
-
-    INVITE_CHOICES: tuple = ((STUDENT_INVITE, STUDENT_INVITE), (TEACHER_INVITE, TEACHER_INVITE))
-
     email = models.EmailField(blank=False, null=False, verbose_name=_("Email address"))
-    type = models.CharField(choices=INVITE_CHOICES, max_length=30, blank=False, null=False)
+    type = models.CharField(choices=CourseInvitationType.INVITE_CHOICES, max_length=30, blank=False, null=False)
     course = models.ForeignKey(Course, to_field="uid", on_delete=models.CASCADE, related_name="invitations")
 
     class Meta(BaseInvitation.Meta):
@@ -181,7 +212,15 @@ class CourseInvitation(BaseInvitation):
         managed = True
         verbose_name = "Course Invitation"
         verbose_name_plural = "Course Invitations"
-        constraints = BaseInvitation.Meta.constraints
+        constraints = BaseInvitation.Meta.constraints + [
+            models.CheckConstraint(
+                check=models.Q(type__in=CourseInvitationType.INVITE_LIST),
+                name="%(class)s_type_constraint",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.sender} invited {self.email}[{self.type}] to {self.course}"
 
     def validate_unique(self, *args, **kwargs) -> None:
         """
@@ -189,26 +228,14 @@ class CourseInvitation(BaseInvitation):
         """
         super().validate_unique(*args, **kwargs)
 
-        # If already in the course as either a student or a teacher then return an error
-        if CourseStudent.filter(student__email=self.email, course=self.course).exists():
-            raise ValidationError(
-                message="A course student with this (email, course) already exists.",
-            )
-        elif CourseTeacher.filter(student__email=self.email, course=self.course).exists():
-            raise ValidationError(
-                message="A course teacher with this (email, course) already exists.",
-            )
-
         # Enforcing the uniqueness of email to course if an existing invite didn't expire or was rejected and accepted
-        invitations = CourseInvitation.objects.filter(email=self.email, course=self.course)
-        for invitation in invitations:
-            if invitation.status == self.PENDING:
-                raise ValidationError(
-                    message="A course invitation with this (email, course) already exists that is pending."
-                )
-
-    def __str__(self) -> str:
-        return f"{self.sender} invited {self.email}[{self.type}] to {self.course}"
+        # Note: The reason why we aren't checking on accepted is because of this scenario: a user changed his email and
+        # created another account with the old email which would render the previously accepted invitation invalid for
+        # the old email.
+        if CourseInvitation._default_manager.filter(
+            ~models.Q(pk=self.pk), email=self.email, course=self.course, status=self.PENDING
+        ).exists():
+            raise ValidationError({"email": _("A course invitation with this email already exists that is pending.")})
 
     @classmethod
     def send_invitation(
@@ -235,7 +262,7 @@ class CourseInvitation(BaseInvitation):
         invite_url: str = f"{protocol}://{site.domain}{reverse('login')}"
 
         with transaction.atomic():
-            invitation: cls = cls.objects.create(*args, **kwargs)
+            invitation: cls = cls._default_manager.create(*args, **kwargs)
 
             # Adding Invitation token as a query param to the invite url
             invite_url += f"{settings.FRONTEND_COURSE_INVITATION_PARAM}={invitation.token}"
@@ -280,19 +307,14 @@ class TeamInvitation(BaseInvitation):
         """
         super().validate_unique(*args, **kwargs)
 
-        # Enforcing that student can only belong to one team in each project requirement
-        if TeamStudent.objects.filter(student__email=self.email, team__requirement=self.team.requirement).exists():
-            raise ValidationError(
-                message="A team student with this (email, requirement) already exists.",
-            )
-
-        # Enforcing the uniqueness of email to team if an existing invite didn't expire or was rejected and accepted
-        invitations = TeamInvitation.objects.filter(email=self.email, course=self.course)
-        for invitation in invitations:
-            if invitation.status == self.PENDING:
-                raise ValidationError(
-                    message="A team invitation with this (email, team) already exists that is pending."
-                )
+        # Enforcing the uniqueness of email to course if an existing invite didn't expire or was rejected and accepted
+        # Note: The reason why we aren't checking on accepted is because of this scenario: a user changed his email and
+        # created another account with the old email which would render the previously accepted invitation invalid for
+        # the old email.
+        if TeamInvitation._default_manager.filter(
+            ~models.Q(pk=self.pk), email=self.email, team=self.team, status=self.PENDING
+        ).exists():
+            raise ValidationError({"email": _("A team invitation with this email already exists that is pending.")})
 
     @classmethod
     def send_invitation(
@@ -319,7 +341,7 @@ class TeamInvitation(BaseInvitation):
         invite_url: str = f"{protocol}://{site.domain}{reverse('login')}"
 
         with transaction.atomic():
-            invitation: cls = cls.objects.create(*args, **kwargs)
+            invitation: cls = cls._default_manager.create(*args, **kwargs)
 
             # Adding Invitation token as a query param to the invite url
             invite_url += f"{settings.FRONTEND_TEAM_INVITATION_PARAM}={invitation.token}"

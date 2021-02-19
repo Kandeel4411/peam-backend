@@ -5,7 +5,8 @@ from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 from django.conf import settings
 
-from .utils.invitation import generate_token
+from .utils.invitations import generate_token
+from .constants import InvitationStatus
 
 
 class Notification(models.Model):
@@ -35,20 +36,10 @@ class Notification(models.Model):
 
 
 class BaseInvitation(models.Model):
-    PENDING: str = "Pending"
-    ACCEPTED: str = "Accepted"
-    REJECTED: str = "Rejected"
-    EXPIRED: str = "Expired"
-
-    STATUS_CHOICES: tuple = (
-        (PENDING, PENDING),
-        (ACCEPTED, ACCEPTED),
-        (REJECTED, REJECTED),
-        (EXPIRED, EXPIRED),
-    )
-
     token = models.CharField(max_length=64, unique=True, default=generate_token)
-    status = models.CharField(choices=STATUS_CHOICES, max_length=30, default=PENDING, null=False)
+    status = models.CharField(
+        choices=InvitationStatus.STATUS_CHOICES, max_length=30, default=InvitationStatus.PENDING, null=False
+    )
     expiry_date = models.DateTimeField(verbose_name=_("Expiry Date"), null=False, blank=False)
     created_at = models.DateTimeField(
         default=timezone.now, blank=True, null=False, editable=False, verbose_name=_("Created At")
@@ -66,6 +57,10 @@ class BaseInvitation(models.Model):
                 check=models.Q(created_at__lte=models.F("expiry_date")),
                 name="%(class)s_expiry_date_constraint",
             ),
+            models.CheckConstraint(
+                check=models.Q(status__in=InvitationStatus.STATUS_LIST),
+                name="%(class)s_status_constraint",
+            ),
         ]
 
     def save(self, *args, **kwargs):
@@ -73,7 +68,7 @@ class BaseInvitation(models.Model):
         Custom save method
         """
         if self.invitation_expired(save=False):
-            self.status = self.EXPIRED
+            self.status = InvitationStatus.EXPIRED
         return super().save(*args, **kwargs)
 
     def invitation_expired(self, save=False) -> bool:
@@ -83,8 +78,8 @@ class BaseInvitation(models.Model):
         :save: will update instance status if it was expired
         """
         if self.expiry_date <= timezone.now():
-            if save and self.status == self.EXPIRED:
-                self.status = self.EXPIRED
+            if save and self.status == InvitationStatus.EXPIRED:
+                self.status = InvitationStatus.EXPIRED
                 self.save()
             return True
         return False

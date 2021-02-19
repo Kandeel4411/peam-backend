@@ -1,6 +1,6 @@
 from django.urls import path, include
 
-from .invites.views import (
+from .invitations.views import (
     CourseInvitationView,
     CourseInvitationDetailView,
     TeamInvitationView,

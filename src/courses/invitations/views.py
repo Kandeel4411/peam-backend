@@ -33,7 +33,7 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course invitations
     """
 
-    queryset = CourseInvitation.objects.all()
+    queryset = CourseInvitation._default_manager.all()
     serializer_class = CourseInvitationSerializer
     lookup_fields = {
         "course_owner": "course__owner__username",
@@ -116,7 +116,7 @@ class CourseInvitationDetailView(GenericAPIView):
     Base view for a specific course invitation.
     """
 
-    queryset = CourseInvitation.objects.all()
+    queryset = CourseInvitation._default_manager.all()
     serializer_class = CourseInvitationSerializer
     lookup_field = "token"
 
@@ -202,30 +202,13 @@ class CourseInvitationDetailView(GenericAPIView):
         """
         instance = self.get_object()
 
-        # TODO Move this check to the serializer for better integrity
-        # Only the user the invitation email belongs to can continue
-        if request.user.email != instance.email:
-            return Response(
-                {"error": _("Only the user the invitation belongs to can accept or decline.")},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         request_serializer = CourseInvitationStatusRequestSerializer(
             instance=instance, data=request.data, context=self.get_serializer_context()
         )
         request_serializer.is_valid(raise_exception=True)
 
-        invite_status = request_serializer.validated_data["status"]
-
-        # TODO remove manual updating for serializer instead
         with transaction.atomic():
-            instance.status = invite_status
-            if status == CourseInvitation.ACCEPTED:
-                if instance.type == CourseInvitation.TEACHER_INVITE:
-                    instance.course.teachers.add(request.user)
-                elif instance.type == CourseInvitation.STUDENT_INVITE:
-                    instance.course.students.add(request.user)
-            instance.save()
+            request_serializer.save()
 
         return Response(status=status.HTTP_200_OK)
 
@@ -235,7 +218,7 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for team invitations
     """
 
-    queryset = TeamInvitation.objects.all()
+    queryset = TeamInvitation._default_manager.all()
     serializer_class = TeamInvitationSerializer
     lookup_fields = {
         "course_owner": "team__requirement__course__owner__username",
@@ -321,7 +304,7 @@ class TeamInvitationDetailView(GenericAPIView):
     Base view for a specific team invitation.
     """
 
-    queryset = TeamInvitation.objects.all()
+    queryset = TeamInvitation._default_manager.all()
     serializer_class = TeamInvitationSerializer
     lookup_field = "token"
 
@@ -373,7 +356,7 @@ class TeamInvitationDetailView(GenericAPIView):
         instance = self.get_object()
 
         # Only a team member can delete an invitation
-        if not TeamStudent.objects.filter(team=instance.team, student=request.user).exists():
+        if not TeamStudent._default_manager.filter(team=instance.team, student=request.user).exists():
             return Response(
                 {"error": _("Only a team member can delete the invitation.")}, status=status.HTTP_400_BAD_REQUEST
             )
@@ -407,26 +390,12 @@ class TeamInvitationDetailView(GenericAPIView):
         """
         instance = self.get_object()
 
-        # TODO Move this check to the serializer for better integrity
-        # Only the user the invitation email belongs to can continue
-        if request.user.email != instance.email:
-            return Response(
-                {"error": _("Only the user the invitation belongs to can accept or decline.")},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
         request_serializer = TeamInvitationStatusRequestSerializer(
             instance=instance, data=request.data, context=self.get_serializer_context()
         )
         request_serializer.is_valid(raise_exception=True)
 
-        invite_status = request_serializer.validated_data["status"]
-
-        # TODO remove manual updating for serializer instead
         with transaction.atomic():
-            instance.status = invite_status
-            if status == TeamInvitation.ACCEPTED:
-                instance.team.students.add(request.user)
-            instance.save()
+            request_serializer.save()
 
         return Response(status=status.HTTP_200_OK)

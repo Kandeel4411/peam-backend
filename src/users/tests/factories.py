@@ -25,7 +25,7 @@ class UserFactory(DjangoModelFactory):
         user.set_password(kwargs["password"])
         user.save()
 
-        EmailAddress.objects.create(  # Verify user's email
+        EmailAddress._default_manager.create(  # Verify user's email
             user=user,
             email=user.email,
             primary=True,

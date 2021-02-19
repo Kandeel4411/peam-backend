@@ -32,7 +32,7 @@ class MultipleRequiredFieldLookupMixin:
     ```python
     # url in the format:  /courses/{owner}/{course_name}
     class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
-        queryset = Course.objects.all()
+        queryset = Course._default_manager.all()
         lookup_fields = {
             "owner": "course__owner__username",
             "course_name": {

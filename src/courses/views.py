@@ -33,7 +33,7 @@ class CourseView(GenericAPIView):
     Base view for courses.
     """
 
-    queryset = Course.objects.all()
+    queryset = Course._default_manager.all()
     serializer_class = CourseSerializer
 
     def get_queryset(self):
@@ -108,7 +108,7 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for a specific course.
     """
 
-    queryset = Course.objects.all()
+    queryset = Course._default_manager.all()
     serializer_class = CourseSerializer
     lookup_fields = {
         "course_owner": {"filter_kwarg": "owner__username", "pk": True},
@@ -200,7 +200,7 @@ class CourseStudentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course students.
     """
 
-    queryset = CourseStudent.objects.all()
+    queryset = CourseStudent._default_manager.all()
     serializer_class = CourseStudentSerializer
     lookup_fields = {
         "course_owner": "course__owner__username",
@@ -239,7 +239,7 @@ class CourseTeacherView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course teacher.
     """
 
-    queryset = CourseTeacher.objects.all()
+    queryset = CourseTeacher._default_manager.all()
     serializer_class = CourseTeacherSerializer
     lookup_fields = {
         "course_owner": "course__owner__username",
@@ -278,7 +278,7 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for project requirements.
     """
 
-    queryset = ProjectRequirement.objects.all()
+    queryset = ProjectRequirement._default_manager.all()
     serializer_class = ProjectRequirementSerializer
     lookup_fields = {
         "course_owner": "course__owner__username",
@@ -346,7 +346,7 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
     Base view for a specific project requirement.
     """
 
-    queryset = ProjectRequirement.objects.all()
+    queryset = ProjectRequirement._default_manager.all()
     serializer_class = ProjectRequirementSerializer
     lookup_fields = {
         "course_owner": "course__owner__username",
@@ -427,7 +427,7 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for teams.
     """
 
-    queryset = Team.objects.all()
+    queryset = Team._default_manager.all()
     serializer_class = TeamSerializer
     lookup_fields = {
         "course_owner": "requirement__course__owner__username",
@@ -492,7 +492,7 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for a specific team.
     """
 
-    queryset = Team.objects.all()
+    queryset = Team._default_manager.all()
     serializer_class = TeamSerializer
     lookup_fields = {
         "course_owner": "requirement__course__owner__username",
@@ -569,7 +569,7 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course attachments.
     """
 
-    queryset = CourseAttachment.objects.all()
+    queryset = CourseAttachment._default_manager.all()
     serializer_class = CourseAttachmentSerializer
     lookup_fields = {
         "course_owner": "course__owner__username",
@@ -623,7 +623,7 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
     Base view for a specific course attachment.
     """
 
-    queryset = CourseAttachment.objects.all()
+    queryset = CourseAttachment._default_manager.all()
     serializer_class = CourseAttachmentSerializer
     lookup_fields = {
         "course_owner": "course__owner__username",
@@ -690,7 +690,7 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
     Base view for project requirement attachments.
     """
 
-    queryset = ProjectRequirementAttachment.objects.all()
+    queryset = ProjectRequirementAttachment._default_manager.all()
     serializer_class = ProjectRequirementAttachmentSerializer
     lookup_fields = {
         "course_owner": "requirement__course__owner__username",
@@ -745,7 +745,7 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
     Base view for a specific project requirement attachment.
     """
 
-    queryset = ProjectRequirementAttachment.objects.all()
+    queryset = ProjectRequirementAttachment._default_manager.all()
     serializer_class = ProjectRequirementAttachmentSerializer
     lookup_fields = {
         "course_owner": "requirement__course__owner__username",

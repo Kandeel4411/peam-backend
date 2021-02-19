@@ -18,7 +18,7 @@ class UserView(GenericAPIView):
     Base view for users.
     """
 
-    queryset = User.objects.all()
+    queryset = User._default_manager.all()
     serializer_class = UserSerializer
     filter_backends = [filters.SearchFilter]
     search_fields = ["username", "email", "first_name", "last_name"]

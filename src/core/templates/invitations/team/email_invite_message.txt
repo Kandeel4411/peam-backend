@@ -6,7 +6,7 @@ Hello from {{ site_name }},
 
 You({{ email }}) have been invited to join the team {{ team }} by {{ sender }}.
 
-If you'd like to join, please go to {{ invite_url }}!
+If you'd like to join, please go to {{ invite_url }} !
 
 Note: this invite is only valid until {{ expiry_date }}.
 

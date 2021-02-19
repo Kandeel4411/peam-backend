@@ -55,9 +55,9 @@ class UserSerializer(FlexFieldsModelSerializer):
 
         if email is not None:
             # Removing old email address and adding a new one
-            EmailAddress.objects.get_for_user(instance, instance.email).delete()
+            EmailAddress._default_manager.get_for_user(instance, instance.email).delete()
             request = self.context["request"]
-            EmailAddress.objects.add_email(request, instance, email, confirm=True)
+            EmailAddress._default_manager.add_email(request, instance, email, confirm=True)
 
             instance.email = email
 

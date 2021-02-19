@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 User = get_user_model()
 
 
+# TODO make username readonly and change forms accordingly
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
     fieldsets = (
@@ -20,7 +21,6 @@ class UserAdmin(BaseUserAdmin):
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
     )
-    readonly_fields = ("username",)
 
     def has_delete_permission(self, request, obj=None):
         return False

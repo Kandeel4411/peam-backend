@@ -24,7 +24,7 @@ class Command(createsuperuser.Command):
 
         if password and not username:
             raise CommandError("--username is required if specifying --password")
-        if email and EmailAddress.objects.filter(email=email).exists():
+        if email and EmailAddress._default_manager.filter(email=email).exists():
             raise CommandError("User with given email already exists.")
 
         with transaction.atomic():
@@ -34,7 +34,7 @@ class Command(createsuperuser.Command):
 
             if email:
                 # Verify user's email
-                EmailAddress.objects.create(
+                EmailAddress._default_manager.create(
                     user=user,
                     email=user.email,
                     primary=True,

@@ -1,16 +1,16 @@
 from allauth.account.adapter import get_adapter
 from django.db import transaction
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_flex_fields import FlexFieldsModelSerializer
 from django.utils.translation import gettext_lazy as _
 from django.contrib.sites.shortcuts import get_current_site
+from rest_framework.validators import UniqueValidator
 
 
-from courses.models import Course, CourseInvitation, TeamStudent, TeamInvitation
-
-User = get_user_model()
+from core.constants import InvitationStatus
+from courses.models import Course, CourseInvitation, TeamStudent, TeamInvitation, CourseStudent, CourseTeacher
+from courses.constants import CourseInvitationType
 
 # TODO figure out if status request serializers and response serializer could be generalized instead
 
@@ -35,15 +35,20 @@ class CourseInvitationRequestSerializer(serializers.Serializer):
     emails = serializers.ListField(child=serializers.EmailField(required=True), allow_empty=False, required=True)
     course = serializers.UUIDField(required=True)
     expiry_date = serializers.DateTimeField(label="Expiry Date", required=True)
-    type = serializers.ChoiceField(choices=CourseInvitation.INVITE_CHOICES, required=True)
+    type = serializers.ChoiceField(choices=CourseInvitationType.INVITE_CHOICES, required=True)
 
 
 class CourseInvitationStatusRequestSerializer(serializers.Serializer):
     """
     Custom serializer used to represent acceptance/denial status requests for the course invitation view
+
+    *Note:* request is expected to be in included in the context.
     """
 
-    status = serializers.ChoiceField(choices=(CourseInvitation.ACCEPTED, CourseInvitation.REJECTED), required=True)
+    status = serializers.ChoiceField(choices=(InvitationStatus.ACCEPTED, InvitationStatus.REJECTED), required=True)
+
+    class Meta:
+        model = CourseInvitation
 
     def validate(self, data: dict) -> dict:
         """
@@ -52,14 +57,22 @@ class CourseInvitationStatusRequestSerializer(serializers.Serializer):
         if self.instance is None:  # No instance was passed
             raise NotImplementedError("A CourseInvitation instance must be passed to the serializer for validation.")
 
-        instance: CourseInvitation = self.instance
+        instance: self.Meta.model = self.instance
+        user = self.context["request"].user
+
+        # Only the user the invitation email belongs to can continue
+        if user.email != instance.email:
+            raise serializers.ValidationError(
+                detail={"error": _("Only the user the invitation belongs to can accept or decline.")},
+                code=403,
+            )
 
         # Status is already accepted
-        if instance.status == CourseInvitation.ACCEPTED:
+        if instance.status == InvitationStatus.ACCEPTED:
             raise serializers.ValidationError(detail={"status": _("Invitation is already accepted.")}, code=400)
 
         # Status is already rejected
-        elif instance.status == CourseInvitation.REJECTED:
+        elif instance.status == InvitationStatus.REJECTED:
             raise serializers.ValidationError(detail={"status": _("Invitation is already rejected.")}, code=400)
 
         # Status is already expired
@@ -67,6 +80,23 @@ class CourseInvitationStatusRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError(detail={"expiry_date": _("Invitation is already expired.")}, code=400)
 
         return super().validate(data)
+
+    def update(self, instance: Meta.model, validated_data: dict) -> Meta.model:
+        """
+        Custom update method
+        """
+        # Updating instance status
+        instance.status = (invite_status := validated_data["status"])
+        if invite_status == InvitationStatus.ACCEPTED:
+            user = self.context["request"].user
+
+            # Adding user to either teachers or students if accepted
+            if instance.type == InvitationStatus.TEACHER_INVITE:
+                instance.course.teachers.add(user)
+            elif instance.type == InvitationStatus.STUDENT_INVITE:
+                instance.course.students.add(user)
+
+        instance.save()
 
 
 class CourseInvitationSerializer(FlexFieldsModelSerializer):
@@ -86,7 +116,7 @@ class CourseInvitationSerializer(FlexFieldsModelSerializer):
             "sender": "users.UserSerializer",
             "course": (
                 "courses.CourseSerializer",
-                {settings.REST_FLEX_FIELDS["FIELDS_PARAM"]: ["title", "code", "description"]},
+                {settings.REST_FLEX_FIELDS["FIELDS_PARAM"]: ["owner", "title", "code", "description"]},
             ),
         }
 
@@ -96,30 +126,45 @@ class CourseInvitationSerializer(FlexFieldsModelSerializer):
         """
         if self.instance is not None:  # An instance already exists
             raise NotImplementedError("Update isn't currently supported for this serializer")
-
         else:
-            sender: User = self.context["request"].user
-            invite_type: str = data["type"]
-            course: Course = data["course"]
             email: str = data["email"]
+            course: Course = data["course"]
+            sender = self.context["request"].user
+            invite_type: str = data["type"]
 
-            # The owner can't invite himself
-            if course.owner.email == email:
-                raise serializers.ValidationError(detail={"email": _("Owner can't invite himself to the course")})
+            # The sender can't invite himself
+            if email == sender.email:
+                raise serializers.ValidationError(detail={"email": _("Sender can't invite himself to the course")})
 
             # If the invite is for a teacher then only the course owner can invite them
-            if course.owner != sender and invite_type == CourseInvitation.TEACHER_INVITE:
+            if course.owner != sender and invite_type == CourseInvitationType.TEACHER_INVITE:
                 raise serializers.ValidationError(
                     detail={"type": _("Only the course owner can invite other teachers.")}
                 )
+
             # Only the course teachers can invite
             if not course.teachers.filter(pk=sender.pk).exists():
                 raise serializers.ValidationError(detail={"sender": _("Only the course teachers can invite.")})
 
-            # Can't invite existing teachers and students
-            if course.teachers.filter(email=email).exists() or course.students.filter(email=email).exists():
+            # Enforcing that if already in the course as either a student or a teacher then return an error
+            if CourseStudent._default_manager.filter(student__email=email, course=course).exists():
                 raise serializers.ValidationError(
-                    detail={"email": _("Cant invite someone who already is in the course.")}
+                    detail={"email": _("A course student with this email already exists.")},
+                )
+            elif CourseTeacher._default_manager.filter(teacher__email=email, course=course).exists():
+                raise serializers.ValidationError(
+                    detail={"email": _("A course teacher with this email already exists.")},
+                )
+
+            # Enforcing the uniqueness of email to course if an existing invite didn't expire or was rejected
+            # and accepted Note: The reason why we aren't checking on accepted is because of this scenario:
+            # a user changed his email and created another account with the old email which would render
+            # the previously accepted invitation invalid for the old email.
+            if self.Meta.model._default_manager.filter(
+                email=email, course=course, status=InvitationStatus.PENDING
+            ).exists():
+                raise serializers.ValidationError(
+                    detail={"email": _("A course invitation with this email already exists that is pending.")}
                 )
 
         return super().validate(data)
@@ -166,9 +211,14 @@ class TeamInvitationRequestSerializer(serializers.Serializer):
 class TeamInvitationStatusRequestSerializer(serializers.Serializer):
     """
     Custom serializer used to represent acceptance/denial status requests for the team invitation view
+
+    *Note:* request is expected to be in included in the context.
     """
 
-    status = serializers.ChoiceField(choices=(TeamInvitation.ACCEPTED, TeamInvitation.REJECTED), required=True)
+    status = serializers.ChoiceField(choices=(InvitationStatus.ACCEPTED, InvitationStatus.REJECTED), required=True)
+
+    class Meta:
+        model = TeamInvitation
 
     def validate(self, data: dict) -> dict:
         """
@@ -177,14 +227,22 @@ class TeamInvitationStatusRequestSerializer(serializers.Serializer):
         if self.instance is None:  # No instance was passed
             raise NotImplementedError("A TeamInvitation instance must be passed to the serializer for validation.")
 
-        instance: TeamInvitation = self.instance
+        instance: self.Meta.model = self.instance
+        user = self.context["request"].user
+
+        # Only the user the invitation email belongs to can continue
+        if user.email != instance.email:
+            raise serializers.ValidationError(
+                detail={"error": _("Only the user the invitation belongs to can accept or decline.")},
+                code=403,
+            )
 
         # Status is already accepted
-        if instance.status == TeamInvitation.ACCEPTED:
+        if instance.status == InvitationStatus.ACCEPTED:
             raise serializers.ValidationError(detail={"status": _("Invitation is already accepted.")}, code=400)
 
         # Status is already rejected
-        elif instance.status == TeamInvitation.REJECTED:
+        elif instance.status == InvitationStatus.REJECTED:
             raise serializers.ValidationError(detail={"status": _("Invitation is already rejected.")}, code=400)
 
         # Status is already expired
@@ -202,6 +260,20 @@ class TeamInvitationStatusRequestSerializer(serializers.Serializer):
             )
 
         return super().validate(data)
+
+    def update(self, instance: Meta.model, validated_data: dict) -> Meta.model:
+        """
+        Custom update method
+        """
+        # Updating instance status
+        instance.status = (invite_status := validated_data["status"])
+
+        # Add to students if accepted
+        if invite_status == InvitationStatus.ACCEPTED:
+            user = self.context["request"].user
+            instance.team.students.add(user)
+
+        instance.save()
 
 
 class TeamInvitationSerializer(FlexFieldsModelSerializer):
@@ -228,30 +300,42 @@ class TeamInvitationSerializer(FlexFieldsModelSerializer):
         """
         if self.instance is not None:  # An instance already exists
             raise NotImplementedError("Update isn't currently supported for this serializer")
-
         else:
-            sender: User = self.context["request"].user
+            sender = self.context["request"].user
             team = data["team"]
-            email: str = data["email"]
+            email = data["email"]
 
             # The sender can't invite himself
             if email == sender.email:
-                raise serializers.ValidationError(detail={"email": _("Student can't invite himself to the team")})
+                raise serializers.ValidationError(detail={"sender": _("Sender can't invite himself to the team")})
 
             # Only a team student can invite other students
-            if not TeamStudent.objects.filter(student=sender, team=team).exists():
-                raise serializers.ValidationError(detail={"email": _("Only a team student can invite other students.")})
-
-            # Cant invite someone who belongs to a team in the same requirement
-            if TeamStudent.objects.filter(student__email=self.email, team__requirement=self.team.requirement).exists():
+            if not TeamStudent._default_manager.filter(student=sender, team=team).exists():
                 raise serializers.ValidationError(
-                    detail={"email": _("Can only invite students that aren't in a team.")}
+                    detail={"sender": _("Only a team student can invite other students.")}
+                )
+
+            # Enforcing that a student can only belong to one team in each project requirement
+            if TeamStudent._default_manager.filter(student__email=email, team__requirement=team.requirement).exists():
+                raise serializers.ValidationError(
+                    detail={"email": _("A team student with this email already exists.")},
                 )
 
             # Cant invite a none course student
             if not team.requirement.course.students.filter(email=email).exists():
                 raise serializers.ValidationError(
                     detail={"email": _("Can only invite students that are in the course.")}
+                )
+
+            # Enforcing the uniqueness of email to team if an existing invite didn't expire or was rejected
+            # and accepted Note: The reason why we aren't checking on accepted is because of this scenario:
+            # a user changed his email and created another account with the old email which would render
+            # the previously accepted invitation invalid for the old email.
+            if self.Meta.model._default_manager.filter(
+                email=email, team=team, status=InvitationStatus.PENDING
+            ).exists():
+                raise serializers.ValidationError(
+                    detail={"email": _("A team invitation with this email already exists that is pending.")}
                 )
 
         return super().validate(data)

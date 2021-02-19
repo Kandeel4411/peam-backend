@@ -27,7 +27,9 @@ class TeamSerializer(FlexFieldsModelSerializer):
     *Note*: request is expected to be passed in the context.
     """
 
-    students = serializers.SlugRelatedField(slug_field="uid", queryset=User.objects.all(), required=True, many=True)
+    students = serializers.SlugRelatedField(
+        slug_field="uid", queryset=User._default_manager.all(), required=True, many=True
+    )
 
     class Meta:
         model = Team
@@ -36,10 +38,36 @@ class TeamSerializer(FlexFieldsModelSerializer):
         extra_kwargs = {
             "requirement": {"write_only": True},
         }
-        validators = [serializers.UniqueTogetherValidator(queryset=Team.objects.all(), fields=["name", "requirement"])]
+        validators = [
+            serializers.UniqueTogetherValidator(queryset=Team._default_manager.all(), fields=["name", "requirement"])
+        ]
         expandable_fields = {
             "students": (UserSerializer, {"many": True}),
         }
+
+    def validate(self, data: dict) -> dict:
+        """
+        Custom validation method
+        """
+        request_user: User = self.context["request"].user
+
+        if self.instance is not None:  # An instance already exists
+            # Can't change to a different requirement
+            if data.get("requirement", None) is None:
+                raise serializers.ValidationError(
+                    detail={"requirement": _("Can't change team to a different requirement.")},
+                )
+        else:
+            student = request_user
+            requirement = data["requirement"]
+
+            # Enforcing that student can only belong to one team in each project requirement
+            if TeamStudent._default_manager.filter(student=student, team__requirement=requirement).exists():
+                raise serializers.ValidationError(
+                    detail={"error": _("User already belongs to another team.")},
+                )
+
+        return super().validate(data)
 
     def create(self, validated_data: dict) -> Meta.model:
         """
@@ -50,7 +78,7 @@ class TeamSerializer(FlexFieldsModelSerializer):
 
         # Adding request user as a student to the
         request = self.contest["request"]
-        TeamStudent.objects.create(team=team, student=request.user)
+        TeamStudent._default_manager.create(team=team, student=request.user)
 
         return team
 
@@ -81,7 +109,9 @@ class ProjectRequirementSerializer(FlexFieldsModelSerializer):
         read_only_fields = ["uid", "teams", "attachments"]
         extra_kwargs = {"course": {"write_only": True}}
         validators = [
-            serializers.UniqueTogetherValidator(queryset=ProjectRequirement.objects.all(), fields=["title", "course"])
+            serializers.UniqueTogetherValidator(
+                queryset=ProjectRequirement._default_manager.all(), fields=["title", "course"]
+            )
         ]
         expandable_fields = {
             "teams": (TeamSerializer, {"many": True}),
@@ -138,7 +168,7 @@ class CourseSerializer(FlexFieldsModelSerializer):
 
     owner = serializers.SlugRelatedField(
         slug_field="uid",
-        queryset=User.objects.all(),
+        queryset=User._default_manager.all(),
         help_text=_(
             "`uid` of course owner. Note: request user must be the same as the owner or incase of updating,"
             " the same as the previous owner."
@@ -164,7 +194,9 @@ class CourseSerializer(FlexFieldsModelSerializer):
             "attachments",
         ]
         read_only_fields = ["uid", "teachers", "students", "requirements", "attachments"]
-        validators = [serializers.UniqueTogetherValidator(queryset=Course.objects.all(), fields=["owner", "code"])]
+        validators = [
+            serializers.UniqueTogetherValidator(queryset=Course._default_manager.all(), fields=["owner", "code"])
+        ]
         expandable_fields = {
             "owner": UserSerializer,
             "students": (UserSerializer, {"many": True}),
@@ -184,7 +216,7 @@ class CourseSerializer(FlexFieldsModelSerializer):
 
             if owner is not None:
                 # Request user must be the same as instance owner if owner is going to be updated
-                if request_user.uid != owner.uid:
+                if request_user != owner:
                     raise serializers.ValidationError(
                         detail={"owner": _("Only the owner can transfer the course to a different user.")}
                     )
@@ -202,18 +234,6 @@ class CourseSerializer(FlexFieldsModelSerializer):
                 raise serializers.ValidationError(detail={"owner": _("Owner must be the same as request user.")})
         return super().validate(data)
 
-    def update(self, instance: Meta.model, validated_data: dict) -> Meta.model:
-        """
-        Custom updating method
-        """
-        instance.owner = validated_data.get("owner", instance.owner)
-        instance.code = validated_data.get("code", instance.code)
-        instance.title = validated_data.get("title", instance.title)
-        instance.description = validated_data.get("description", instance.description)
-        instance.save()
-
-        return instance
-
     def create(self, validated_data: dict) -> Meta.model:
         """
         Custom creation method
@@ -222,6 +242,6 @@ class CourseSerializer(FlexFieldsModelSerializer):
         course: self.Meta.model = super().create(validated_data)
 
         # Create a course teacher instance for the owner
-        CourseTeacher.objects.create(teacher=validated_data["owner"], course=course)
+        CourseTeacher._default_manager.create(teacher=validated_data["owner"], course=course)
 
         return course
