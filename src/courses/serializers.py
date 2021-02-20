@@ -75,7 +75,7 @@ class TeamSerializer(FlexFieldsModelSerializer):
         team: self.Meta.model = super().create(validated_data)
 
         # Adding request user as a student to the
-        request = self.contest["request"]
+        request = self.context["request"]
         TeamStudent._default_manager.create(team_id=team.uid, student_id=request.user.uid)
 
         return team

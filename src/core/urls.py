@@ -33,6 +33,7 @@ auth_patterns = [
     path("login/", LoginView, name="rest_login"),
     # Routes that require logged in user
     path("logout/", LogoutView.as_view(), name="rest_logout"),
+    # TODO Change/Integrate this in users app instead
     path("user/password/change/", PasswordChangeView, name="rest_password_change"),
 ]
 
