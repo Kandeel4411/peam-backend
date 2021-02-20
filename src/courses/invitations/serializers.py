@@ -306,6 +306,12 @@ class TeamInvitationSerializer(FlexFieldsModelSerializer):
             team = data["team"]
             email = data["email"]
 
+            # Expiry date can't be less than the creation date
+            if data["expiry_date"] <= timezone.localtime():
+                raise serializers.ValidationError(
+                    detail={"expiry_date": _("Expiry date can't be less than the creation date.")}
+                )
+
             # The sender can't invite himself
             if email == sender.email:
                 raise serializers.ValidationError(detail={"sender": _("Sender can't invite himself to the team")})
