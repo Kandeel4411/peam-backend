@@ -3,6 +3,7 @@ from django.conf import settings
 from django.views.generic.base import TemplateView
 from django.conf.urls.static import static
 from django.urls import path, include
+from rest_framework.permissions import AllowAny
 
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
@@ -62,6 +63,7 @@ schema_view = get_schema_view(
         contact=openapi.Contact(email="abdelrahmankandil@hotmail.com"),
     ),
     patterns=api_patterns,
+    permission_classes=(AllowAny,),  # TODO Close this in the future
     public=True,
 )
 

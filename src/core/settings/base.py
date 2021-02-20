@@ -98,6 +98,7 @@ JWT_AUTH_COOKIE = "jwt-auth"
 JWT_AUTH_SECURE = False
 JWT_AUTH_HTTPONLY = True
 JWT_AUTH_SAMESITE = "Lax"
+OLD_PASSWORD_FIELD_ENABLED = True
 
 REST_AUTH_SERIALIZERS = {
     "JWT_TOKEN_CLAIMS_SERIALIZER": "core.auth.serializers.CustomTokenObtainPairSerializer",
