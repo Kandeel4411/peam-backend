@@ -13,9 +13,14 @@ from dj_rest_auth.views import PasswordChangeView
 from core.utils.openapi import openapi_error_response
 from core.utils.flex_fields import get_flex_serializer_config, FlexFieldsQuerySerializer
 from .serializers import UserSerializer, AvatarSerializer, ProfileSerializer
-from .permissions import UserDetailViewPermission
 
 User = get_user_model()
+
+BaseUserPasswordChangeView = swagger_auto_schema(
+    method="post",
+    request_body=PasswordChangeSerializer(),
+    responses={status.HTTP_200_OK: "New password has been saved."},
+)(PasswordChangeView.as_view())
 
 
 class UserView(GenericAPIView):
@@ -48,7 +53,6 @@ class UserDetailView(GenericAPIView):
     Base view for a specific user.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, UserDetailViewPermission)
     queryset = User._default_manager.all()
     serializer_class = UserSerializer
     lookup_field = "username"
@@ -189,10 +193,3 @@ class BaseUserProfileView(GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(queryset.get(pk=request.user.pk), **config)
         return Response(serializer.data)
-
-
-BaseUserPasswordChangeView = swagger_auto_schema(
-    method="post",
-    request_body=PasswordChangeSerializer(),
-    responses={status.HTTP_200_OK: "New password has been saved."},
-)(PasswordChangeView.as_view())
