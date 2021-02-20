@@ -11,8 +11,7 @@ class UserFactory(DjangoModelFactory):
         model = User
 
     email: str = factory.Faker("email")
-    first_name: str = factory.Faker("first_name")
-    last_name: str = factory.Faker("last_name")
+    name: str = factory.Faker("name")
     username: str = factory.Faker("first_name")
     password: str = factory.Faker("password")
 

@@ -57,7 +57,7 @@ class CourseTeacher(models.Model):
         Model level validation hook
         """
         # Enforcing that if already in the course as a student then return an error
-        if CourseStudent._default_manager.filter(student=self.teacher, course=self.course).exists():
+        if CourseStudent._default_manager.filter(student_id=self.teacher_id, course_id=self.course_id).exists():
             raise ValidationError(
                 {"course": _("Can't be both a teacher and a student to the same course.")},
             )
@@ -81,7 +81,7 @@ class CourseStudent(models.Model):
         Model level validation hook
         """
         # Enforcing that if already in the course as a teacher then return an error
-        if CourseTeacher._default_manager.filter(teacher=self.student, course=self.course).exists():
+        if CourseTeacher._default_manager.filter(teacher_id=self.student_id, course_id=self.course_id).exists():
             raise ValidationError(
                 {"course": _("Can't be both a student and a teacher to the same course.")},
             )
@@ -184,7 +184,7 @@ class TeamStudent(models.Model):
 
         # Enforcing that student can only belong to one team in each project requirement
         if self.__class__._default_manager.filter(
-            ~models.Q(pk=self.pk), student=self.student, team__requirement=self.team.requirement
+            ~models.Q(pk=self.pk), student_id=self.student_id, team__requirement_id=self.team.requirement_id
         ).exists():
             raise ValidationError(
                 {"student": _("Student already belongs to another team.")},
@@ -194,7 +194,7 @@ class TeamStudent(models.Model):
         """
         Custom deletion call
         """
-        student_count = self.__class__._default_manager.filter(team=self.team).count()
+        student_count = self.__class__._default_manager.filter(team_id=self.team_id).count()
         super().delete(*args, **kwargs)
 
         # This is the last team student
@@ -233,7 +233,7 @@ class CourseInvitation(BaseInvitation):
         # created another account with the old email which would render the previously accepted invitation invalid for
         # the old email.
         if CourseInvitation._default_manager.filter(
-            ~models.Q(pk=self.pk), email=self.email, course=self.course, status=self.PENDING
+            ~models.Q(pk=self.pk), email=self.email, course_id=self.course_id, status=self.PENDING
         ).exists():
             raise ValidationError({"email": _("A course invitation with this email already exists that is pending.")})
 
@@ -270,10 +270,10 @@ class CourseInvitation(BaseInvitation):
 
             # Show sender full name if its present
             sender = invitation.sender
-            if sender.full_name is None:
+            if not sender.name:
                 sender = sender.username
             else:
-                sender = sender.full_name.title()
+                sender = sender.name.title()
 
             email_template_ctx = {
                 "invite_url": invite_url,
@@ -313,7 +313,7 @@ class TeamInvitation(BaseInvitation):
         # created another account with the old email which would render the previously accepted invitation invalid for
         # the old email.
         if TeamInvitation._default_manager.filter(
-            ~models.Q(pk=self.pk), email=self.email, team=self.team, status=self.PENDING
+            ~models.Q(pk=self.pk), email=self.email, team_id=self.team_id, status=self.PENDING
         ).exists():
             raise ValidationError({"email": _("A team invitation with this email already exists that is pending.")})
 
@@ -350,10 +350,10 @@ class TeamInvitation(BaseInvitation):
 
             # Show sender full name if its present
             sender = invitation.sender
-            if sender.full_name is None:
+            if not sender.name:
                 sender = sender.username
             else:
-                sender = sender.full_name.title()
+                sender = sender.name.title()
 
             email_template_ctx = {
                 "invite_url": invite_url,

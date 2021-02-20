@@ -19,9 +19,8 @@ class UserSerializer(FlexFieldsModelSerializer):
 
     class Meta:
         model = User
-        fields = ("uid", "avatar", "username", "email", "first_name", "last_name", "full_name")
+        fields = ("uid", "avatar", "username", "email", "name")
         read_only_fields = ("uid", "username")
-        extra_kwargs = {"first_name": {"write_only": True}, "last_name": {"write_only": True}}
 
     def validate(self, data: dict) -> dict:
         if self.instance is not None:  # An instance already exists
@@ -48,8 +47,7 @@ class UserSerializer(FlexFieldsModelSerializer):
         """
         avatar = validated_data.get("avatar", None)
         email = validated_data.get("email", None)
-        first_name = validated_data.get("first_name", None)
-        last_name = validated_data.get("last_name", None)
+        name = validated_data.get("name", None)
 
         updating = {}
 
@@ -64,10 +62,8 @@ class UserSerializer(FlexFieldsModelSerializer):
         # TODO delete old avatar when updating it
         if avatar is not None:
             instance.avatar = avatar
-        if first_name is not None:
-            instance.first_name = first_name
-        if last_name is not None:
-            instance.last_name = last_name
+        if name is not None:
+            instance.name = name
 
         if updating:
             instance.save()

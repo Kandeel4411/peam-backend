@@ -52,17 +52,15 @@ class TeamSerializer(FlexFieldsModelSerializer):
         request_user: User = self.context["request"].user
 
         if self.instance is not None:  # An instance already exists
-            # Can't change to a different requirement
-            if data.get("requirement", None) is None:
-                raise serializers.ValidationError(
-                    detail={"requirement": _("Can't change team to a different requirement.")},
-                )
+            pass
         else:
             student = request_user
             requirement = data["requirement"]
 
             # Enforcing that student can only belong to one team in each project requirement
-            if TeamStudent._default_manager.filter(student=student, team__requirement=requirement).exists():
+            if TeamStudent._default_manager.filter(
+                student_id=student.uid, team__requirement_id=requirement.uid
+            ).exists():
                 raise serializers.ValidationError(
                     detail={"error": _("User already belongs to another team.")},
                 )
@@ -78,7 +76,7 @@ class TeamSerializer(FlexFieldsModelSerializer):
 
         # Adding request user as a student to the
         request = self.contest["request"]
-        TeamStudent._default_manager.create(team=team, student=request.user)
+        TeamStudent._default_manager.create(team_id=team.uid, student_id=request.user.uid)
 
         return team
 
@@ -162,8 +160,6 @@ class CourseTeacherSerializer(FlexFieldsModelSerializer):
 class CourseSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling Course instances.
-
-    *Note*: request is expected to be passed in the context.
     """
 
     owner = serializers.SlugRelatedField(
@@ -209,29 +205,10 @@ class CourseSerializer(FlexFieldsModelSerializer):
         """
         Custom validation method
         """
-        request_user: User = self.context["request"].user
-
         if self.instance is not None:  # An instance already exists
-            owner: User = data.get("owner", None)
-
-            if owner is not None:
-                # Request user must be the same as instance owner if owner is going to be updated
-                if request_user != owner:
-                    raise serializers.ValidationError(
-                        detail={"owner": _("Only the owner can transfer the course to a different user.")}
-                    )
-
-                # New owner must be one of the course teachers
-                teacher = self.instance.teachers.filter(pk=owner.pk)
-                if not teacher.exists():
-                    raise serializers.ValidationError(detail={"owner": _("Owner must be one of the course teachers.")})
-
+            pass
         else:
-            owner: User = data["owner"]
-
-            # owner must be the same as request user
-            if request_user != owner:
-                raise serializers.ValidationError(detail={"owner": _("Owner must be the same as request user.")})
+            pass
         return super().validate(data)
 
     def create(self, validated_data: dict) -> Meta.model:
@@ -242,6 +219,6 @@ class CourseSerializer(FlexFieldsModelSerializer):
         course: self.Meta.model = super().create(validated_data)
 
         # Create a course teacher instance for the owner
-        CourseTeacher._default_manager.create(teacher=validated_data["owner"], course=course)
+        CourseTeacher._default_manager.create(teacher_id=course.owner_id, course_id=course.uid)
 
         return course
