@@ -27,14 +27,12 @@ class TeamSerializer(FlexFieldsModelSerializer):
     *Note*: request is expected to be passed in the context.
     """
 
-    students = serializers.SlugRelatedField(
-        slug_field="uid", queryset=User._default_manager.all(), required=True, many=True
-    )
+    students = serializers.SlugRelatedField(slug_field="uid", read_only=True, many=True)
 
     class Meta:
         model = Team
         fields = ["uid", "name", "requirement", "students"]
-        read_only_fields = ["uid", "students"]
+        read_only_fields = ["uid"]
         extra_kwargs = {
             "requirement": {"write_only": True},
         }
