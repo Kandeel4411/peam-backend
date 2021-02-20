@@ -1,8 +1,10 @@
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
+from rest_framework.exceptions import PermissionDenied
 from rest_framework import status
 from rest_flex_fields import is_expanded
 from django.db import transaction
+from django.utils.translation import gettext_lazy as _
 from drf_yasg.utils import swagger_auto_schema
 
 from core.utils.mixins import MultipleRequiredFieldLookupMixin
@@ -25,6 +27,19 @@ from .serializers import (
     CourseTeacherSerializer,
     TeamSerializer,
     ProjectRequirementAttachmentSerializer,
+)
+from .permissions import (
+    CourseDetailViewPermission,
+    CourseStudentViewPermission,
+    CourseTeacherViewPermission,
+    ProjectRequirementViewPermission,
+    ProjectRequirementDetailViewPermission,
+    TeamViewPermission,
+    TeamDetailViewPermission,
+    CourseAttachmentViewPermission,
+    CourseAttachmentDetailViewPermission,
+    ProjectRequirementAttachmentViewPermission,
+    ProjectRequirementAttachmentDetailViewPermission,
 )
 
 
@@ -108,6 +123,7 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for a specific course.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, CourseDetailViewPermission)
     queryset = Course._default_manager.all()
     serializer_class = CourseSerializer
     lookup_fields = {
@@ -200,6 +216,7 @@ class CourseStudentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course students.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, CourseStudentViewPermission)
     queryset = CourseStudent._default_manager.all()
     serializer_class = CourseStudentSerializer
     lookup_fields = {
@@ -239,6 +256,7 @@ class CourseTeacherView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course teacher.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, CourseTeacherViewPermission)
     queryset = CourseTeacher._default_manager.all()
     serializer_class = CourseTeacherSerializer
     lookup_fields = {
@@ -278,6 +296,7 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for project requirements.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, ProjectRequirementViewPermission)
     queryset = ProjectRequirement._default_manager.all()
     serializer_class = ProjectRequirementSerializer
     lookup_fields = {
@@ -346,6 +365,7 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
     Base view for a specific project requirement.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, ProjectRequirementDetailViewPermission)
     queryset = ProjectRequirement._default_manager.all()
     serializer_class = ProjectRequirementSerializer
     lookup_fields = {
@@ -427,6 +447,7 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for teams.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, TeamViewPermission)
     queryset = Team._default_manager.all()
     serializer_class = TeamSerializer
     lookup_fields = {
@@ -492,6 +513,7 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for a specific team.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, TeamDetailViewPermission)
     queryset = Team._default_manager.all()
     serializer_class = TeamSerializer
     lookup_fields = {
@@ -569,6 +591,7 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course attachments.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, CourseAttachmentViewPermission)
     queryset = CourseAttachment._default_manager.all()
     serializer_class = CourseAttachmentSerializer
     lookup_fields = {
@@ -623,6 +646,7 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
     Base view for a specific course attachment.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, CourseAttachmentDetailViewPermission)
     queryset = CourseAttachment._default_manager.all()
     serializer_class = CourseAttachmentSerializer
     lookup_fields = {
@@ -690,6 +714,7 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
     Base view for project requirement attachments.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, ProjectRequirementAttachmentViewPermission)
     queryset = ProjectRequirementAttachment._default_manager.all()
     serializer_class = ProjectRequirementAttachmentSerializer
     lookup_fields = {
@@ -745,6 +770,7 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
     Base view for a specific project requirement attachment.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, ProjectRequirementAttachmentDetailViewPermission)
     queryset = ProjectRequirementAttachment._default_manager.all()
     serializer_class = ProjectRequirementAttachmentSerializer
     lookup_fields = {

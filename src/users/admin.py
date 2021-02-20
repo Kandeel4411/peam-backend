@@ -12,7 +12,7 @@ class UserAdmin(BaseUserAdmin):
     fieldsets = (
         # original form fieldsets, expanded
         (None, {"fields": ("username", "password")}),
-        (_("Personal info"), {"fields": ("email", "first_name", "last_name", "avatar")}),
+        (_("Personal info"), {"fields": ("email", "name", "avatar")}),
         (
             _("Permissions"),
             {
@@ -20,6 +20,26 @@ class UserAdmin(BaseUserAdmin):
             },
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
+    )
+
+    add_fieldsets = (
+        # UserAdmin specific fieldsets used in creation
+        (
+            None,
+            {
+                "classes": ("wide",),
+                "fields": ("username", "email", "password1", "password2"),
+            },
+        ),
+    )
+
+    list_display = ("username", "email", "name", "is_staff")
+    list_filter = ("is_staff", "is_superuser", "is_active", "groups")
+    search_fields = ("username", "name", "email")
+    ordering = ("username",)
+    filter_horizontal = (
+        "groups",
+        "user_permissions",
     )
 
     def has_delete_permission(self, request, obj=None):

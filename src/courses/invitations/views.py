@@ -23,6 +23,12 @@ from .serializers import (
     TeamInvitationRequestSerializer,
     TeamInvitationStatusRequestSerializer,
 )
+from .permissions import (
+    CourseInvitationViewPermission,
+    CourseInvitationDetailViewPermission,
+    TeamInvitationViewPermission,
+    TeamInvitationDetailViewPermission,
+)
 
 
 class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
@@ -30,6 +36,7 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course invitations
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, CourseInvitationViewPermission)
     queryset = CourseInvitation._default_manager.all()
     serializer_class = CourseInvitationSerializer
     lookup_fields = {
@@ -113,6 +120,7 @@ class CourseInvitationDetailView(GenericAPIView):
     Base view for a specific course invitation.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, CourseInvitationDetailViewPermission)
     queryset = CourseInvitation._default_manager.all()
     serializer_class = CourseInvitationSerializer
     lookup_field = "token"
@@ -145,17 +153,7 @@ class CourseInvitationDetailView(GenericAPIView):
         return Response(serializer.data)
 
     @transaction.atomic
-    @swagger_auto_schema(
-        responses={
-            status.HTTP_204_NO_CONTENT: "",
-            status.HTTP_400_BAD_REQUEST: openapi_error_response(
-                description="Only the course owner can delete an invitation.",
-                examples={
-                    "error": "Only the course owner can delete the invitation.",
-                },
-            ),
-        }
-    )
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a course invitation.
@@ -163,14 +161,7 @@ class CourseInvitationDetailView(GenericAPIView):
         Only the course owner can delete the course invitation.
         """
         instance = self.get_object()
-
-        # Only course owner can delete a course invitation
-        if instance.course.owner != request.user:
-            return Response(
-                {"error": _("Only the course owner can delete the invitation.")}, status=status.HTTP_400_BAD_REQUEST
-            )
-        else:
-            instance.delete()
+        instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @swagger_auto_schema(
@@ -215,6 +206,7 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for team invitations
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, TeamInvitationViewPermission)
     queryset = TeamInvitation._default_manager.all()
     serializer_class = TeamInvitationSerializer
     lookup_fields = {
@@ -301,6 +293,7 @@ class TeamInvitationDetailView(GenericAPIView):
     Base view for a specific team invitation.
     """
 
+    permission_classes = (*GenericAPIView.permission_classes, TeamInvitationDetailViewPermission)
     queryset = TeamInvitation._default_manager.all()
     serializer_class = TeamInvitationSerializer
     lookup_field = "token"
@@ -333,17 +326,7 @@ class TeamInvitationDetailView(GenericAPIView):
         return Response(serializer.data)
 
     @transaction.atomic
-    @swagger_auto_schema(
-        responses={
-            status.HTTP_204_NO_CONTENT: "",
-            status.HTTP_400_BAD_REQUEST: openapi_error_response(
-                description="Only a team member can delete an invitation.",
-                examples={
-                    "error": "Only a team member can delete the invitation.",
-                },
-            ),
-        }
-    )
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a team invitation.
@@ -351,14 +334,7 @@ class TeamInvitationDetailView(GenericAPIView):
         Only a team member can delete the invitation.
         """
         instance = self.get_object()
-
-        # Only a team member can delete an invitation
-        if not TeamStudent._default_manager.filter(team=instance.team, student=request.user).exists():
-            return Response(
-                {"error": _("Only a team member can delete the invitation.")}, status=status.HTTP_400_BAD_REQUEST
-            )
-        else:
-            instance.delete()
+        instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @swagger_auto_schema(
@@ -369,12 +345,6 @@ class TeamInvitationDetailView(GenericAPIView):
                 description="Resource specific errors.",
                 examples={
                     "property": "error message.",
-                },
-            ),
-            status.HTTP_403_FORBIDDEN: openapi_error_response(
-                description="Only the user the invitation belongs to can accept or decline.",
-                examples={
-                    "error": "Only the user the invitation belongs to can accept or decline.",
                 },
             ),
         },

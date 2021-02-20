@@ -21,7 +21,7 @@ class UserView(GenericAPIView):
     queryset = User._default_manager.all()
     serializer_class = UserSerializer
     filter_backends = [filters.SearchFilter]
-    search_fields = ["username", "email", "first_name", "last_name"]
+    search_fields = ["username", "email", "name"]
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: UserSerializer(many=True)}
