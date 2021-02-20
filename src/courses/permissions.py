@@ -76,6 +76,33 @@ class CourseStudentViewPermission(permissions.BasePermission):
         return True
 
 
+class CourseStudentDetailViewPermission(permissions.BasePermission):
+    """
+    Base permission that applies checks for the CourseStudentDetailView
+    """
+
+    message = None
+
+    def has_object_permission(self, request, view, obj: CourseStudent) -> bool:
+        """
+        Checks object level permissions
+        """
+
+        # Only those who belong to the course can retrieve
+        if request.method == "GET":
+            self.message = _("User must be either a student or a teacher of the course.")
+            return is_course_teacher(user=request.user, course_id=obj.course_id) or is_course_student(
+                user=request.user, course_id=obj.course_id
+            )
+
+        # Only course teachers can delete
+        elif request.method == "DELETE":
+            self.message = _("Only the course teachers can remove a student.")
+            return is_course_teacher(user=request.user, course_id=obj.course_id)
+
+        return True
+
+
 class CourseTeacherViewPermission(permissions.BasePermission):
     """
     Base permission that applies checks for the CourseTeacherView
@@ -97,6 +124,33 @@ class CourseTeacherViewPermission(permissions.BasePermission):
             return is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
                 user=request.user, code=code, owner_username=username
             )
+
+        return True
+
+
+class CourseTeacherDetailViewPermission(permissions.BasePermission):
+    """
+    Base permission that applies checks for the CourseTeacherDetailView
+    """
+
+    message = None
+
+    def has_object_permission(self, request, view, obj: CourseTeacher) -> bool:
+        """
+        Checks object level permissions
+        """
+
+        # Only those who belong to the course can retrieve
+        if request.method == "GET":
+            self.message = _("User must be either a student or a teacher of the course.")
+            return is_course_teacher(user=request.user, course_id=obj.course_id) or is_course_student(
+                user=request.user, course_id=obj.course_id
+            )
+
+        # Only the course owner can delete
+        elif request.method == "DELETE":
+            self.message = _("Only the course owner can remove a teacher.")
+            return is_course_owner(user=request.user, course_id=obj.course_id)
 
         return True
 

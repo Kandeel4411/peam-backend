@@ -31,7 +31,9 @@ from .serializers import (
 from .permissions import (
     CourseDetailViewPermission,
     CourseStudentViewPermission,
+    CourseStudentDetailViewPermission,
     CourseTeacherViewPermission,
+    CourseTeacherDetailViewPermission,
     ProjectRequirementViewPermission,
     ProjectRequirementDetailViewPermission,
     TeamViewPermission,
@@ -199,7 +201,7 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return Response(serializer.data)
 
     @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: CourseSerializer()})
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a course.
@@ -251,6 +253,59 @@ class CourseStudentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return Response({"students": serializer.data})
 
 
+class CourseStudentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for a specific course student.
+    """
+
+    permission_classes = (*GenericAPIView.permission_classes, CourseStudentDetailViewPermission)
+    queryset = CourseStudent._default_manager.all()
+    serializer_class = CourseStudentSerializer
+    lookup_fields = {
+        "course_owner": "course__owner__username",
+        "course_code": "course__code",
+        "course_student": {"filter_kwarg": "student__username", "pk": True},
+    }
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        # Optimizing queries
+        if is_expanded(self.request, "student"):
+            queryset = queryset.select_related("student")
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseStudentSerializer()}
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        Retrieves a course student.
+
+        Expansion query params apply*
+        """
+        instance = self.get_object()
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instance, **config)
+        return Response(serializer.data)
+
+    @transaction.atomic
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    def delete(self, request, *args, **kwargs) -> Response:
+        """
+        Deletes a course student.
+
+        Removes related objects
+        """
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 class CourseTeacherView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     """
     Base view for course teacher.
@@ -289,6 +344,59 @@ class CourseTeacherView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"teachers": serializer.data})
+
+
+class CourseTeacherDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for a specific course teacher.
+    """
+
+    permission_classes = (*GenericAPIView.permission_classes, CourseTeacherDetailViewPermission)
+    queryset = CourseTeacher._default_manager.all()
+    serializer_class = CourseTeacherSerializer
+    lookup_fields = {
+        "course_owner": "course__owner__username",
+        "course_code": "course__code",
+        "course_teacher": {"filter_kwarg": "teacher__username", "pk": True},
+    }
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        # Optimizing queries
+        if is_expanded(self.request, "teacher"):
+            queryset = queryset.select_related("teacher")
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseStudentSerializer()}
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        Retrieves a course teacher.
+
+        Expansion query params apply*
+        """
+        instance = self.get_object()
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instance, **config)
+        return Response(serializer.data)
+
+    @transaction.atomic
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    def delete(self, request, *args, **kwargs) -> Response:
+        """
+        Deletes a course teacher.
+
+        Removes related objects
+        """
+        instance = self.get_object()
+        instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
@@ -430,7 +538,7 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
         return Response(serializer.data)
 
     @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ProjectRequirementSerializer()})
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a project requirement.
@@ -574,7 +682,7 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return Response(serializer.data)
 
     @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: TeamSerializer()})
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a team.
@@ -697,7 +805,7 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
         return Response(serializer.data)
 
     @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: CourseAttachmentSerializer()})
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a course attachment.
@@ -823,7 +931,7 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         return Response(serializer.data)
 
     @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ProjectRequirementAttachmentSerializer()})
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a project requirement attachment.

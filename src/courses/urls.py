@@ -9,7 +9,9 @@ from .invitations.views import (
 from .views import (
     CourseView,
     CourseStudentView,
+    CourseStudentDetailView,
     CourseTeacherView,
+    CourseTeacherDetailView,
     CourseDetailView,
     TeamView,
     TeamDetailView,
@@ -32,9 +34,11 @@ course_invitation_detail_pattern = f"{course_pattern}invitations/<str:token>/"
 
 # Course student patterns
 course_student_pattern = f"{course_detail_pattern}students/"
+course_student_detail_pattern = f"{course_student_pattern}<str:course_student>/"
 
 # Course teacher patterns
 course_teacher_pattern = f"{course_detail_pattern}teachers/"
+course_teacher_detail_pattern = f"{course_teacher_pattern}<str:course_teacher>/"
 
 # Project requirement patterns
 requirement_pattern = f"{course_detail_pattern}requirements/"
@@ -66,7 +70,9 @@ urlpatterns = [
     ),
     path(course_detail_pattern, CourseDetailView.as_view(), name="courses-detail"),
     path(course_student_pattern, CourseStudentView.as_view(), name="students"),
+    path(course_student_detail_pattern, CourseStudentDetailView.as_view(), name="students-detail"),
     path(course_teacher_pattern, CourseTeacherView.as_view(), name="teachers"),
+    path(course_teacher_detail_pattern, CourseTeacherDetailView.as_view(), name="teachers-detail"),
     path(course_invitation_pattern, CourseInvitationView.as_view(), name="course-invitations"),
     path(course_attachment_pattern, CourseAttachmentView.as_view(), name="course-attachments"),
     path(course_attachment_detail_pattern, CourseAttachmentDetailView.as_view(), name="course-attachments-detail"),
