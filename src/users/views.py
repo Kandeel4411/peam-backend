@@ -2,13 +2,17 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
+from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status, filters
 from rest_flex_fields import is_expanded
 from drf_yasg.utils import swagger_auto_schema
+from dj_rest_auth.serializers import PasswordChangeSerializer
+from dj_rest_auth.views import PasswordChangeView
 
 from core.utils.openapi import openapi_error_response
 from core.utils.flex_fields import get_flex_serializer_config, FlexFieldsQuerySerializer
-from .serializers import UserSerializer
+from .serializers import UserSerializer, AvatarSerializer, ProfileSerializer
 from .permissions import UserDetailViewPermission
 
 User = get_user_model()
@@ -61,6 +65,26 @@ class UserDetailView(GenericAPIView):
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
+
+class BaseUserView(GenericAPIView):
+    """
+    Base view for the current user.
+    """
+
+    permission_classes = (IsAuthenticated,)
+    serializer_class = UserSerializer
+
+    @swagger_auto_schema(query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: UserSerializer()})
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        Retrieves the current user.
+
+        Expansion query params apply*
+        """
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(request.user, **config)
+        return Response(serializer.data)
+
     @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
@@ -77,13 +101,12 @@ class UserDetailView(GenericAPIView):
     )
     def patch(self, request, *args, **kwargs) -> Response:
         """
-        Updates a user.
+        Updates the current user.
 
         Expansion query params apply*
         """
-        instance = self.get_object()
         config = get_flex_serializer_config(request)
-        serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
+        serializer = self.get_serializer(request.user, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
@@ -92,11 +115,84 @@ class UserDetailView(GenericAPIView):
     @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
-        Deletes a user.
+        Deletes the current user.
 
         Removes related objects
         """
-        instance = self.get_object()
-        instance.is_active = False
-        instance.save()  # Only setting user as inactive for now
+        request.user.is_active = False
+        request.user.save()  # Only setting user as inactive for now
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BaseUserAvatarView(GenericAPIView):
+    """
+    Base view for updating a user's avatar.
+    """
+
+    serializer_class = AvatarSerializer
+    permission_classes = (IsAuthenticated,)
+    parser_classes = (MultiPartParser,)
+
+    @transaction.atomic
+    @swagger_auto_schema(request_body=AvatarSerializer(), responses={status.HTTP_200_OK: AvatarSerializer()})
+    def patch(self, request, *args, **kwargs) -> Response:
+        """
+        Updates current user's avatar.
+
+        .
+        """
+        serializer = self.get_serializer(instance=request.user, data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
+
+    @transaction.atomic
+    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    def delete(self, request, *args, **kwargs) -> Response:
+        """
+        Deletes current user's avatar.
+
+        .
+        """
+        request.user.avatar.delete(save=True)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class BaseUserProfileView(GenericAPIView):
+    """
+    Base view for the current user's profile.
+    """
+
+    permission_classes = (IsAuthenticated,)
+    serializer_class = ProfileSerializer
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: ProfileSerializer()}
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        Retrieves the current user's profile.
+
+        Expansion query params apply*
+        """
+        queryset = User._default_manager
+
+        if is_expanded(self.request, "as_student_set"):
+            queryset = queryset.prefetch_related("as_student_set")
+        if is_expanded(self.request, "as_teacher_set"):
+            queryset = queryset.prefetch_related("as_teacher_set")
+        if is_expanded(self.request, "teams"):
+            queryset = queryset.prefetch_related("teams")
+        if is_expanded(self.request, "courses"):
+            queryset = queryset.prefetch_related("courses")
+
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(queryset.get(pk=request.user.pk), **config)
+        return Response(serializer.data)
+
+
+BaseUserPasswordChangeView = swagger_auto_schema(
+    method="post",
+    request_body=PasswordChangeSerializer(),
+    responses={status.HTTP_200_OK: "New password has been saved."},
+)(PasswordChangeView.as_view())

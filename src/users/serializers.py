@@ -10,6 +10,26 @@ from rest_flex_fields import FlexFieldsModelSerializer
 User = get_user_model()
 
 
+class AvatarSerializer(serializers.Serializer):
+    """
+    A serializer responsible for updating a user's avatar.
+    """
+
+    avatar = serializers.ImageField(allow_empty_file=False, use_url=True)
+
+    def update(self, instance: User, validated_data: dict) -> User:
+        """
+        Custom update method
+        """
+        avatar = validated_data["avatar"]
+
+        instance.avatar.delete(save=False)
+        instance.avatar = avatar
+        instance.save()
+
+        return instance
+
+
 class UserSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling User instances.
@@ -33,7 +53,6 @@ class UserSerializer(FlexFieldsModelSerializer):
         """
         Custom update method
         """
-        avatar = validated_data.get("avatar", None)
         email = validated_data.get("email", None)
         name = validated_data.get("name", None)
 
@@ -47,9 +66,6 @@ class UserSerializer(FlexFieldsModelSerializer):
 
             updating["email"] = email
 
-        # TODO delete old avatar when updating it
-        if avatar is not None and avatar != instance.avatar:
-            updating["avatar"] = avatar
         if name is not None and instance.name != name:
             updating["name"] = name
 
@@ -59,3 +75,26 @@ class UserSerializer(FlexFieldsModelSerializer):
             instance.save()
 
         return instance
+
+
+class ProfileSerializer(FlexFieldsModelSerializer):
+    """
+    A serializer responsible for representing user profile.
+
+    """
+
+    as_student_set = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    as_teacher_set = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    courses = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    teams = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+
+    class Meta:
+        model = User
+        fields = ("uid", "avatar", "username", "email", "name", "as_student_set", "as_teacher_set", "courses", "teams")
+        read_only_fields = ("uid", "avatar", "username", "email", "name")
+        expandable_fields = {
+            "as_student_set": ("courses.CourseSerializer", {"many": True}),
+            "as_teacher_set": ("courses.CourseSerializer", {"many": True}),
+            "courses": ("courses.CourseSerializer", {"many": True}),
+            "teams": ("courses.TeamSerializer", {"many": True}),
+        }

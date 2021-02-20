@@ -16,9 +16,3 @@ LoginView = swagger_auto_schema(
     request_body=LoginSerializer(),
     responses={status.HTTP_200_OK: LoginResponseSerializer()},
 )(LoginView.as_view())
-
-PasswordChangeView = swagger_auto_schema(
-    method="post",
-    request_body=PasswordChangeSerializer(),
-    responses={status.HTTP_200_OK: "New password has been saved."},
-)(PasswordChangeView.as_view())
