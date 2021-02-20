@@ -22,18 +22,6 @@ class UserSerializer(FlexFieldsModelSerializer):
         fields = ("uid", "avatar", "username", "email", "name")
         read_only_fields = ("uid", "username")
 
-    def validate(self, data: dict) -> dict:
-        if self.instance is not None:  # An instance already exists
-            user = self.context["request"].user
-
-            # Only the same user can update the instance
-            if self.instance != user:
-                raise serializers.ValidationError(
-                    detail={"error": _("Only the same user can update his info.")}, code=400
-                )
-
-        return super().validate()
-
     def validate_username(self, username: str) -> str:
         """
         Overriding username validation
@@ -51,21 +39,23 @@ class UserSerializer(FlexFieldsModelSerializer):
 
         updating = {}
 
-        if email is not None:
+        if email is not None and email != instance.email:
             # Removing old email address and adding a new one
             EmailAddress._default_manager.get_for_user(instance, instance.email).delete()
             request = self.context["request"]
             EmailAddress._default_manager.add_email(request, instance, email, confirm=True)
 
-            instance.email = email
+            updating["email"] = email
 
         # TODO delete old avatar when updating it
-        if avatar is not None:
-            instance.avatar = avatar
-        if name is not None:
-            instance.name = name
+        if avatar is not None and avatar != instance.avatar:
+            updating["avatar"] = avatar
+        if name is not None and instance.name != name:
+            updating["name"] = name
 
         if updating:
+            for key, value in updating.items():
+                setattr(instance, key, value)
             instance.save()
 
         return instance

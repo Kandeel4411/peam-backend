@@ -33,7 +33,7 @@ class Course(models.Model):
         verbose_name = "Course"
         verbose_name_plural = "Courses"
         constraints = [models.UniqueConstraint(fields=["owner", "code"], name="unique_course")]
-        indexes = [models.Index(fields=["owner"])]
+        indexes = [models.Index(fields=("owner",), name="%(class)s_owner_index")]
 
     def __str__(self) -> str:
         return f"{self.code} - {self.title}"
@@ -157,7 +157,7 @@ class Team(models.Model):
         verbose_name = "Team"
         verbose_name_plural = "Teams"
         constraints = [models.UniqueConstraint(fields=["name", "requirement"], name="unique_team")]
-        indexes = [models.Index(fields=["requirement"])]
+        indexes = [models.Index(fields=("requirement",), name="%(class)s_requirement_index")]
 
     def __str__(self) -> str:
         return f"{self.name} - {self.requirement}"
@@ -268,7 +268,7 @@ class CourseInvitation(BaseInvitation):
             # Adding Invitation token as a query param to the invite url
             invite_url += f"{settings.FRONTEND_COURSE_INVITATION_PARAM}={invitation.token}"
 
-            # Show sender full name if its present
+            # Show sender name if its present
             sender = invitation.sender
             if not sender.name:
                 sender = sender.username
@@ -348,7 +348,7 @@ class TeamInvitation(BaseInvitation):
             # Adding Invitation token as a query param to the invite url
             invite_url += f"{settings.FRONTEND_TEAM_INVITATION_PARAM}={invitation.token}"
 
-            # Show sender full name if its present
+            # Show sender name if its present
             sender = invitation.sender
             if not sender.name:
                 sender = sender.username

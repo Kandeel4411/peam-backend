@@ -19,7 +19,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     avatar = models.ImageField(upload_to="avatars", null=True, blank=True, verbose_name=_("Profile Picture"))
-    email = models.EmailField(verbose_name=_("Email address"), null=False, blank=False)
+    email = models.EmailField(verbose_name=_("Email address"), unique=True, null=False, blank=False)
     name = models.CharField(_("Name"), max_length=150, blank=True, null=False)
 
     username_validator = UnicodeUsernameValidator()
