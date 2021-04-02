@@ -26,23 +26,10 @@ from .serializers import (
     CourseStudentSerializer,
     CourseTeacherSerializer,
     TeamSerializer,
+    TeamStudentSerializer,
     ProjectRequirementAttachmentSerializer,
 )
-from .permissions import (
-    CourseDetailViewPermission,
-    CourseStudentViewPermission,
-    CourseStudentDetailViewPermission,
-    CourseTeacherViewPermission,
-    CourseTeacherDetailViewPermission,
-    ProjectRequirementViewPermission,
-    ProjectRequirementDetailViewPermission,
-    TeamViewPermission,
-    TeamDetailViewPermission,
-    CourseAttachmentViewPermission,
-    CourseAttachmentDetailViewPermission,
-    ProjectRequirementAttachmentViewPermission,
-    ProjectRequirementAttachmentDetailViewPermission,
-)
+from .utils import is_course_student, is_course_teacher, is_course_owner, is_team_student
 
 
 class CourseView(GenericAPIView):
@@ -79,7 +66,6 @@ class CourseView(GenericAPIView):
 
         return queryset
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseSerializer(),
@@ -102,7 +88,16 @@ class CourseView(GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+
+        with transaction.atomic():
+            course = serializer.save()
+
+            #  Link current course owner/request user as course teacher
+            data = {"teacher": course.owner_id, "course": course.uid}
+            course_teacher_serializer = CourseTeacherSerializer(data=data)
+            course_teacher_serializer.is_valid(raise_exception=True)
+            course_teacher_serializer.save()
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @swagger_auto_schema(
@@ -125,7 +120,6 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for a specific course.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseDetailViewPermission)
     queryset = Course._default_manager.all()
     serializer_class = CourseSerializer
     lookup_fields = {
@@ -160,7 +154,13 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseSerializer()}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: CourseSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -169,11 +169,19 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, course_id=instance.uid) or is_course_student(
+            user=request.user, course_id=instance.uid
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseSerializer(),
@@ -185,6 +193,9 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def patch(self, request, *args, **kwargs) -> Response:
@@ -194,14 +205,33 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only course teachers can update
+        authorized = is_course_teacher(user=request.user, course_id=instance.uid)
+        if not authorized:
+            message = _("Only course teachers can update.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        # Only course owner can transfer ownership
+        elif "owner" in request.data and not is_course_owner(user=request.user, course_id=instance.uid):
+            message = _("Only the course owner can transfer ownership.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a course.
@@ -209,7 +239,15 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Removes related objects
         """
         instance = self.get_object()
-        instance.delete()
+
+        # Only the course owner can delete
+        authorized = is_course_owner(user=request.user, course_id=instance.uid)
+        if not authorized:
+            message = _("Only the course owner can delete.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -218,7 +256,6 @@ class CourseStudentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course students.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseStudentViewPermission)
     queryset = CourseStudent._default_manager.all()
     serializer_class = CourseStudentSerializer
     lookup_fields = {
@@ -239,7 +276,13 @@ class CourseStudentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseStudentSerializer(many=True)}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: CourseStudentSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -247,6 +290,18 @@ class CourseStudentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
+            user=request.user, code=code, owner_username=username
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
@@ -258,7 +313,6 @@ class CourseStudentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for a specific course student.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseStudentDetailViewPermission)
     queryset = CourseStudent._default_manager.all()
     serializer_class = CourseStudentSerializer
     lookup_fields = {
@@ -280,7 +334,13 @@ class CourseStudentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseStudentSerializer()}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: CourseStudentSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -289,12 +349,27 @@ class CourseStudentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id) or is_course_student(
+            user=request.user, course_id=instance.course_id
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a course student.
@@ -302,7 +377,15 @@ class CourseStudentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Removes related objects
         """
         instance = self.get_object()
-        instance.delete()
+
+        # Only course teachers can delete
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only the course teachers can remove a student.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -311,7 +394,6 @@ class CourseTeacherView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course teacher.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseTeacherViewPermission)
     queryset = CourseTeacher._default_manager.all()
     serializer_class = CourseTeacherSerializer
     lookup_fields = {
@@ -332,7 +414,13 @@ class CourseTeacherView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseTeacherSerializer(many=True)}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: CourseTeacherSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -340,6 +428,18 @@ class CourseTeacherView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
+            user=request.user, code=code, owner_username=username
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
@@ -351,7 +451,6 @@ class CourseTeacherDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for a specific course teacher.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseTeacherDetailViewPermission)
     queryset = CourseTeacher._default_manager.all()
     serializer_class = CourseTeacherSerializer
     lookup_fields = {
@@ -373,7 +472,13 @@ class CourseTeacherDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseStudentSerializer()}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: CourseStudentSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -382,12 +487,27 @@ class CourseTeacherDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id) or is_course_student(
+            user=request.user, course_id=instance.course_id
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a course teacher.
@@ -395,7 +515,15 @@ class CourseTeacherDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Removes related objects
         """
         instance = self.get_object()
-        instance.delete()
+
+        # Only the course owner can delete
+        authorized = is_course_owner(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only the course owner can remove a teacher.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -404,7 +532,6 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for project requirements.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, ProjectRequirementViewPermission)
     queryset = ProjectRequirement._default_manager.all()
     serializer_class = ProjectRequirementSerializer
     lookup_fields = {
@@ -428,7 +555,12 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
-        responses={status.HTTP_200_OK: ProjectRequirementSerializer(many=True)},
+        responses={
+            status.HTTP_200_OK: ProjectRequirementSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -436,12 +568,22 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
+            user=request.user, code=code, owner_username=username
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"requirements": serializer.data})
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementSerializer(),
@@ -453,6 +595,9 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def post(self, request, *args, **kwargs) -> Response:
@@ -461,10 +606,20 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only course teachers can create a project requirement
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username)
+        if not authorized:
+            message = _("Only course teachers can create a project requirement.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -473,7 +628,6 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
     Base view for a specific project requirement.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, ProjectRequirementDetailViewPermission)
     queryset = ProjectRequirement._default_manager.all()
     serializer_class = ProjectRequirementSerializer
     lookup_fields = {
@@ -497,7 +651,13 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: ProjectRequirementSerializer()}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: ProjectRequirementSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -506,11 +666,19 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id) or is_course_student(
+            user=request.user, course_id=instance.course_id
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementSerializer(),
@@ -522,6 +690,9 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def patch(self, request, *args, **kwargs) -> Response:
@@ -531,14 +702,28 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only course teachers can update a requirement
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only course teachers can a update or delete project requirement.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a project requirement.
@@ -546,7 +731,15 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
         Removes related objects
         """
         instance = self.get_object()
-        instance.delete()
+
+        # Only course teachers can update a requirement
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only course teachers can a update or delete project requirement.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -555,7 +748,6 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for teams.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, TeamViewPermission)
     queryset = Team._default_manager.all()
     serializer_class = TeamSerializer
     lookup_fields = {
@@ -576,7 +768,13 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: TeamSerializer(many=True)}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: TeamSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -584,12 +782,22 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
+            user=request.user, code=code, owner_username=username
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"teams": serializer.data})
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=TeamSerializer(),
@@ -601,6 +809,9 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def post(self, request, *args, **kwargs) -> Response:
@@ -609,10 +820,28 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only course students can create a team
+        authorized = is_course_student(user=request.user, code=code, owner_username=username)
+        if not authorized:
+            message = _("Only course students can create a team.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+
+        with transaction.atomic():
+            team = serializer.save()
+
+            #  Link current request user as team student
+            data = {"student": request.user.uid, "team": team.uid}
+            team_student_serializer = TeamStudentSerializer(data=data)
+            team_student_serializer.is_valid(raise_exception=True)
+            team_student_serializer.save()
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -621,7 +850,6 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for a specific team.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, TeamDetailViewPermission)
     queryset = Team._default_manager.all()
     serializer_class = TeamSerializer
     lookup_fields = {
@@ -642,7 +870,15 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         return queryset
 
-    @swagger_auto_schema(query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: TeamSerializer()})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: TeamSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
         Retrieves a team.
@@ -650,11 +886,19 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(
+            user=request.user, course_id=instance.requirement.course_id
+        ) or is_course_student(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=TeamSerializer(),
@@ -666,6 +910,9 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def patch(self, request, *args, **kwargs) -> Response:
@@ -675,14 +922,30 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only course teachers and team members can update or delete a team
+        authorized = is_course_teacher(user=request.user, course_id=instance.requirement.course_id) or is_team_student(
+            user=request.user, team_id=instance.uid
+        )
+        if not authorized:
+            message = _("Only course teachers and team members can update or delete a team.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a team.
@@ -690,7 +953,17 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         Removes related objects
         """
         instance = self.get_object()
-        instance.delete()
+
+        # Only course teachers and team members can update or delete a team
+        authorized = is_course_teacher(user=request.user, course_id=instance.requirement.course_id) or is_team_student(
+            user=request.user, team_id=instance.uid
+        )
+        if not authorized:
+            message = _("Only course teachers and team members can update or delete a team.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -699,7 +972,6 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course attachments.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseAttachmentViewPermission)
     queryset = CourseAttachment._default_manager.all()
     serializer_class = CourseAttachmentSerializer
     lookup_fields = {
@@ -709,7 +981,12 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
-        responses={status.HTTP_200_OK: CourseAttachmentSerializer(many=True)},
+        responses={
+            status.HTTP_200_OK: CourseAttachmentSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -717,12 +994,22 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
+            user=request.user, code=code, owner_username=username
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"attachments": serializer.data})
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseAttachmentSerializer(),
@@ -734,6 +1021,9 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def post(self, request, *args, **kwargs) -> Response:
@@ -742,10 +1032,20 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only course teachers can create a course attachment
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username)
+        if not authorized:
+            message = _("Only course teachers can create a course attachment.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -754,7 +1054,6 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
     Base view for a specific course attachment.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseAttachmentDetailViewPermission)
     queryset = CourseAttachment._default_manager.all()
     serializer_class = CourseAttachmentSerializer
     lookup_fields = {
@@ -764,7 +1063,13 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
     }
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseAttachmentSerializer()}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: CourseAttachmentSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -773,11 +1078,19 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id) or is_course_student(
+            user=request.user, course_id=instance.course_id
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseAttachmentSerializer(),
@@ -788,6 +1101,9 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
                 examples={
                     "property": "error message.",
                 },
+            ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
             ),
         },
     )
@@ -798,14 +1114,28 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only course teachers can update or delete a course attachment
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only course teachers can a update or delete course attachment.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a course attachment.
@@ -813,7 +1143,15 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
         Removes related objects
         """
         instance = self.get_object()
-        instance.delete()
+
+        # Only course teachers can update or delete a course attachment
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only course teachers can a update or delete course attachment.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -822,7 +1160,6 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
     Base view for project requirement attachments.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, ProjectRequirementAttachmentViewPermission)
     queryset = ProjectRequirementAttachment._default_manager.all()
     serializer_class = ProjectRequirementAttachmentSerializer
     lookup_fields = {
@@ -833,7 +1170,12 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
-        responses={status.HTTP_200_OK: ProjectRequirementAttachmentSerializer(many=True)},
+        responses={
+            status.HTTP_200_OK: ProjectRequirementAttachmentSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -841,12 +1183,22 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
+            user=request.user, code=code, owner_username=username
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instances = self.filter_queryset(self.get_queryset())
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"attachments": serializer.data})
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementAttachmentSerializer(),
@@ -858,6 +1210,9 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def post(self, request, *args, **kwargs) -> Response:
@@ -866,10 +1221,20 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only course teachers can create a project requirement attachment
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username)
+        if not authorized:
+            message = _("Only course teachers can create a project requirement attachment.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -878,7 +1243,6 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
     Base view for a specific project requirement attachment.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, ProjectRequirementAttachmentDetailViewPermission)
     queryset = ProjectRequirementAttachment._default_manager.all()
     serializer_class = ProjectRequirementAttachmentSerializer
     lookup_fields = {
@@ -890,7 +1254,12 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
-        responses={status.HTTP_200_OK: ProjectRequirementAttachmentSerializer()},
+        responses={
+            status.HTTP_200_OK: ProjectRequirementAttachmentSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -899,11 +1268,19 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id) or is_course_student(
+            user=request.user, course_id=instance.course_id
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementAttachmentSerializer(),
@@ -915,6 +1292,9 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def patch(self, request, *args, **kwargs) -> Response:
@@ -924,14 +1304,28 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only course teachers can update or delete a project requirement attachment
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only course teachers can a update or delete project requirement attachment.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a project requirement attachment.
@@ -939,5 +1333,13 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         Removes related objects
         """
         instance = self.get_object()
-        instance.delete()
+
+        # Only course teachers can update or delete a project requirement attachment
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only course teachers can a update or delete project requirement attachment.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

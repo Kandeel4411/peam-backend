@@ -83,18 +83,28 @@ class ProfileSerializer(FlexFieldsModelSerializer):
 
     """
 
-    as_student_set = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
-    as_teacher_set = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
-    courses = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    courses_taken = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    courses_taught = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    courses_owned = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
     teams = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
 
     class Meta:
         model = User
-        fields = ("uid", "avatar", "username", "email", "name", "as_student_set", "as_teacher_set", "courses", "teams")
+        fields = (
+            "uid",
+            "avatar",
+            "username",
+            "email",
+            "name",
+            "courses_taken",
+            "courses_taught",
+            "courses_owned",
+            "teams",
+        )
         read_only_fields = ("uid", "avatar", "username", "email", "name")
         expandable_fields = {
-            "as_student_set": ("courses.CourseSerializer", {"many": True}),
-            "as_teacher_set": ("courses.CourseSerializer", {"many": True}),
-            "courses": ("courses.CourseSerializer", {"many": True}),
+            "courses_taken": ("courses.CourseSerializer", {"many": True}),
+            "courses_taught": ("courses.CourseSerializer", {"many": True}),
+            "courses_owned": ("courses.CourseSerializer", {"many": True}),
             "teams": ("courses.TeamSerializer", {"many": True}),
         }

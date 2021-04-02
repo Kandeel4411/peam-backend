@@ -13,6 +13,7 @@ from core.utils.mixins import MultipleRequiredFieldLookupMixin
 from core.utils.flex_fields import get_flex_serializer_config, FlexFieldsQuerySerializer
 from core.utils.openapi import openapi_error_response
 from courses.models import CourseInvitation, Course, TeamInvitation, Team, TeamStudent
+from courses.utils import is_course_student, is_course_teacher, is_course_owner, is_team_student
 from .serializers import (
     CourseInvitationSerializer,
     CourseInvitationResponseSerializer,
@@ -23,12 +24,6 @@ from .serializers import (
     TeamInvitationRequestSerializer,
     TeamInvitationStatusRequestSerializer,
 )
-from .permissions import (
-    CourseInvitationViewPermission,
-    CourseInvitationDetailViewPermission,
-    TeamInvitationViewPermission,
-    TeamInvitationDetailViewPermission,
-)
 
 
 class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
@@ -36,7 +31,6 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for course invitations
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseInvitationViewPermission)
     queryset = CourseInvitation._default_manager.all()
     serializer_class = CourseInvitationSerializer
     lookup_fields = {
@@ -57,7 +51,12 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
-        responses={status.HTTP_200_OK: CourseInvitationSerializer(many=True)},
+        responses={
+            status.HTTP_200_OK: CourseInvitationSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -65,6 +64,15 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only course teachers can view the course invitations
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username)
+        if not authorized:
+            message = _("Only teachers can view the course invitations.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instances = self.get_queryset()
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
@@ -80,6 +88,9 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def post(self, request, *args, **kwargs) -> Response:
@@ -88,6 +99,15 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Always returns 200
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only course teachers can send a course invitation
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username)
+        if not authorized:
+            message = _("Only course teachers can send a course invitation.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         request_serializer = CourseInvitationRequestSerializer(data=request.data)
         request_serializer.is_valid(raise_exception=True)
 
@@ -120,7 +140,6 @@ class CourseInvitationDetailView(GenericAPIView):
     Base view for a specific course invitation.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, CourseInvitationDetailViewPermission)
     queryset = CourseInvitation._default_manager.all()
     serializer_class = CourseInvitationSerializer
     lookup_field = "token"
@@ -139,7 +158,13 @@ class CourseInvitationDetailView(GenericAPIView):
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: CourseInvitationSerializer()}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: CourseInvitationSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -148,12 +173,25 @@ class CourseInvitationDetailView(GenericAPIView):
         expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only course teachers can can view a course invitation
+        authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only course teachers can view a course invitation.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a course invitation.
@@ -161,6 +199,13 @@ class CourseInvitationDetailView(GenericAPIView):
         Only the course owner can delete the course invitation.
         """
         instance = self.get_object()
+
+        # Only the course owner can delete a course invitation
+        authorized = is_course_owner(user=request.user, course_id=instance.course_id)
+        if not authorized:
+            message = _("Only the course owner can delete a course invitation.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -175,10 +220,7 @@ class CourseInvitationDetailView(GenericAPIView):
                 },
             ),
             status.HTTP_403_FORBIDDEN: openapi_error_response(
-                description="Only the user the invitation belongs to can accept or decline.",
-                examples={
-                    "error": "Only the user the invitation belongs to can accept or decline.",
-                },
+                description="Authorization specific errors", examples={"error": "message"}
             ),
         },
     )
@@ -190,13 +232,21 @@ class CourseInvitationDetailView(GenericAPIView):
         """
         instance = self.get_object()
 
+        # Only the user the invitation belongs to can accept or decline.
+        authorized = request.user.email == instance.email
+        if not authorized:
+            message = _("Only the user the invitation belongs to can accept or decline.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         request_serializer = CourseInvitationStatusRequestSerializer(
-            instance=instance, data=request.data, context=self.get_serializer_context()
+            data=request.data,
         )
         request_serializer.is_valid(raise_exception=True)
 
+        serializer = self.get_serializer(instance=instance, data=request_serializer.validated_data)
+
         with transaction.atomic():
-            request_serializer.save()
+            serializer.save()
 
         return Response(status=status.HTTP_200_OK)
 
@@ -206,7 +256,6 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     Base view for team invitations
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, TeamInvitationViewPermission)
     queryset = TeamInvitation._default_manager.all()
     serializer_class = TeamInvitationSerializer
     lookup_fields = {
@@ -230,7 +279,12 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
-        responses={status.HTTP_200_OK: TeamInvitationSerializer(many=True)},
+        responses={
+            status.HTTP_200_OK: TeamInvitationSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -238,6 +292,16 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Expansion query params apply*
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+        title: str = kwargs["requirement_title"]
+
+        # Only team members can view the team invitations
+        authorized = is_team_student(user=request.user, owner_username=username, code=code, requirement_title=title)
+        if not authorized:
+            message = _("Only team members can view the team invitations")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instances = self.get_queryset()
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instances, many=True, **config)
@@ -253,6 +317,9 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def post(self, request, *args, **kwargs) -> Response:
@@ -261,6 +328,16 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         Always returns 200
         """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+        title: str = kwargs["requirement_title"]
+
+        # Only team members can send a team invitation
+        authorized = is_team_student(user=request.user, owner_username=username, code=code, requirement_title=title)
+        if not authorized:
+            message = _("Only team members can send a team invitation.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         request_serializer = TeamInvitationRequestSerializer(data=request.data)
         request_serializer.is_valid(raise_exception=True)
 
@@ -293,7 +370,6 @@ class TeamInvitationDetailView(GenericAPIView):
     Base view for a specific team invitation.
     """
 
-    permission_classes = (*GenericAPIView.permission_classes, TeamInvitationDetailViewPermission)
     queryset = TeamInvitation._default_manager.all()
     serializer_class = TeamInvitationSerializer
     lookup_field = "token"
@@ -312,7 +388,13 @@ class TeamInvitationDetailView(GenericAPIView):
         return queryset
 
     @swagger_auto_schema(
-        query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: TeamInvitationSerializer()}
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: TeamInvitationSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
     )
     def get(self, request, *args, **kwargs) -> Response:
         """
@@ -321,12 +403,25 @@ class TeamInvitationDetailView(GenericAPIView):
         Expansion query params apply*
         """
         instance = self.get_object()
+
+        # Only team members can view a team invitation
+        authorized = is_team_student(user=request.user, team_id=instance.team_id)
+        if not authorized:
+            message = _("Only team members can view a team invitation.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
-    @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
     def delete(self, request, *args, **kwargs) -> Response:
         """
         Deletes a team invitation.
@@ -334,6 +429,13 @@ class TeamInvitationDetailView(GenericAPIView):
         Only a team member can delete the invitation.
         """
         instance = self.get_object()
+
+        # Only team members can delete a team invitation
+        authorized = is_team_student(user=request.user, team_id=instance.team_id)
+        if not authorized:
+            message = _("Only team members can delete a team invitation.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -347,6 +449,9 @@ class TeamInvitationDetailView(GenericAPIView):
                     "property": "error message.",
                 },
             ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
         },
     )
     def post(self, request, *args, **kwargs) -> Response:
@@ -357,12 +462,20 @@ class TeamInvitationDetailView(GenericAPIView):
         """
         instance = self.get_object()
 
+        # Only the user the invitation belongs to can accept or decline.
+        authorized = request.user.email == instance.email
+        if not authorized:
+            message = _("Only the user the invitation belongs to can accept or decline.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
         request_serializer = TeamInvitationStatusRequestSerializer(
-            instance=instance, data=request.data, context=self.get_serializer_context()
+            data=request.data,
         )
         request_serializer.is_valid(raise_exception=True)
 
+        serializer = self.get_serializer(instance=instance, data=request_serializer.validated_data)
+
         with transaction.atomic():
-            request_serializer.save()
+            serializer.save()
 
         return Response(status=status.HTTP_200_OK)

@@ -19,9 +19,9 @@ def is_course_owner(user, course_id: Optional = None, code: Optional[str] = None
     :param user: User object that the check will be applied to.
     """
     if course_id is not None:
-        return user.courses.filter(uid=course_id).exists()
+        return user.courses_owned.filter(uid=course_id).exists()
     else:
-        return user.courses.filter(code=code).exists()
+        return user.courses_owned.filter(code=code).exists()
 
 
 def is_course_student(

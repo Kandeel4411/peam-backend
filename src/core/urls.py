@@ -70,7 +70,7 @@ schema_view = get_schema_view(
 urlpatterns = (
     [
         # Api Doc homepage
-        path("", schema_view.with_ui("swagger", cache_timeout=0), name="schema-swagger"),
+        path("", schema_view.with_ui("redoc", cache_timeout=0), name="schema-redoc"),
         path("", include(api_patterns)),
         path(  # Required route with name "account_confirm_email" that is sent to user email on sign up
             settings.FRONTEND_EMAIL_CONFIRMATION_URL,

@@ -37,7 +37,11 @@ class TeamSerializer(FlexFieldsModelSerializer):
             "requirement": {"write_only": True},
         }
         validators = [
-            serializers.UniqueTogetherValidator(queryset=Team._default_manager.all(), fields=["name", "requirement"])
+            serializers.UniqueTogetherValidator(
+                queryset=Team._default_manager.all(),
+                fields=["name", "requirement"],
+                message=_("A team with the same name already exists in the project requirement."),
+            )
         ]
         expandable_fields = {
             "students": (UserSerializer, {"many": True}),
@@ -47,36 +51,42 @@ class TeamSerializer(FlexFieldsModelSerializer):
         """
         Custom validation method
         """
-        request_user: User = self.context["request"].user
+        instance = self.Meta.model(**data) if self.instance is None else self.instance
+        try:
+            instance.full_clean()
+        except DjangoValidationError as exc:
+            # Converting Django ValidationError to DRF Serializer Validation Error
+            raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
+        return data
 
-        if self.instance is not None:  # An instance already exists
-            pass
-        else:
-            student = request_user
-            requirement = data["requirement"]
 
-            # Enforcing that student can only belong to one team in each project requirement
-            if TeamStudent._default_manager.filter(
-                student_id=student.uid, team__requirement_id=requirement.uid
-            ).exists():
-                raise serializers.ValidationError(
-                    detail={"error": _("User already belongs to another team.")},
-                )
+class TeamStudentSerializer(FlexFieldsModelSerializer):
+    """
+    A serializer responsible for handling TeamStudent instances
+    """
 
-        return super().validate(data)
+    class Meta:
+        model = TeamStudent
+        fields = ["student", "team"]
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=TeamStudent._default_manager.all(),
+                fields=["student", "team"],
+                message=_("Student already belongs to the team."),
+            )
+        ]
 
-    def create(self, validated_data: dict) -> Meta.model:
+    def validate(self, data: dict) -> dict:
         """
-        Custom creation method
+        Custom validation method
         """
-
-        team: self.Meta.model = super().create(validated_data)
-
-        # Adding request user as a student to the
-        request = self.context["request"]
-        TeamStudent._default_manager.create(team_id=team.uid, student_id=request.user.uid)
-
-        return team
+        instance = self.Meta.model(**data) if self.instance is None else self.instance
+        try:
+            instance.full_clean()
+        except DjangoValidationError as exc:
+            # Converting Django ValidationError to DRF Serializer Validation Error
+            raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
+        return data
 
 
 class ProjectRequirementAttachmentSerializer(FlexFieldsModelSerializer):
@@ -89,6 +99,18 @@ class ProjectRequirementAttachmentSerializer(FlexFieldsModelSerializer):
         fields = ["uid", "title", "requirement", "description", "link"]
         read_only_fields = ["uid"]
         extra_kwargs = {"requirement": {"write_only": True}}
+
+    def validate(self, data: dict) -> dict:
+        """
+        Custom validate method
+        """
+        instance = self.Meta.model(**data) if self.instance is None else self.instance
+        try:
+            instance.full_clean(**data)
+        except DjangoValidationError as exc:
+            # Converting Django ValidationError to DRF Serializer Validation Error
+            raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
+        return data
 
 
 class ProjectRequirementSerializer(FlexFieldsModelSerializer):
@@ -106,13 +128,27 @@ class ProjectRequirementSerializer(FlexFieldsModelSerializer):
         extra_kwargs = {"course": {"write_only": True}}
         validators = [
             serializers.UniqueTogetherValidator(
-                queryset=ProjectRequirement._default_manager.all(), fields=["title", "course"]
+                queryset=ProjectRequirement._default_manager.all(),
+                fields=["title", "course"],
+                message=_("Can't create multiple project requirements with the same title."),
             )
         ]
         expandable_fields = {
             "teams": (TeamSerializer, {"many": True}),
             "attachments": (ProjectRequirementAttachmentSerializer, {"many": True}),
         }
+
+    def validate(self, data: dict) -> dict:
+        """
+        Custom validate method
+        """
+        instance = self.Meta.model(**data) if self.instance is None else self.instance
+        try:
+            instance.full_clean(**data)
+        except DjangoValidationError as exc:
+            # Converting Django ValidationError to DRF Serializer Validation Error
+            raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
+        return data
 
 
 class CourseAttachmentSerializer(FlexFieldsModelSerializer):
@@ -125,6 +161,18 @@ class CourseAttachmentSerializer(FlexFieldsModelSerializer):
         fields = ["uid", "title", "course", "description", "link"]
         read_only_fields = ["uid"]
         extra_kwargs = {"course": {"write_only": True}}
+
+    def validate(self, data: dict) -> dict:
+        """
+        Custom validate method
+        """
+        instance = self.Meta.model(**data) if self.instance is None else self.instance
+        try:
+            instance.full_clean(**data)
+        except DjangoValidationError as exc:
+            # Converting Django ValidationError to DRF Serializer Validation Error
+            raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
+        return data
 
 
 class CourseStudentSerializer(FlexFieldsModelSerializer):
@@ -139,6 +187,25 @@ class CourseStudentSerializer(FlexFieldsModelSerializer):
         expandable_fields = {
             "student": UserSerializer,
         }
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=CourseStudent._default_manager.all(),
+                fields=["student", "course"],
+                message=_("Student already belongs to the course."),
+            )
+        ]
+
+    def validate(self, data: dict) -> dict:
+        """
+        Custom validate method
+        """
+        instance = self.Meta.model(**data) if self.instance is None else self.instance
+        try:
+            instance.full_clean(**data)
+        except DjangoValidationError as exc:
+            # Converting Django ValidationError to DRF Serializer Validation Error
+            raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
+        return data
 
 
 class CourseTeacherSerializer(FlexFieldsModelSerializer):
@@ -153,6 +220,25 @@ class CourseTeacherSerializer(FlexFieldsModelSerializer):
         expandable_fields = {
             "teacher": UserSerializer,
         }
+        validators = [
+            serializers.UniqueTogetherValidator(
+                queryset=CourseTeacher._default_manager.all(),
+                fields=["teacher", "course"],
+                message=_("Teacher already belongs to the course."),
+            )
+        ]
+
+    def validate(self, data: dict) -> dict:
+        """
+        Custom validate method
+        """
+        instance = self.Meta.model(**data) if self.instance is None else self.instance
+        try:
+            instance.full_clean(**data)
+        except DjangoValidationError as exc:
+            # Converting Django ValidationError to DRF Serializer Validation Error
+            raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
+        return data
 
 
 class CourseSerializer(FlexFieldsModelSerializer):
@@ -189,7 +275,11 @@ class CourseSerializer(FlexFieldsModelSerializer):
         ]
         read_only_fields = ["uid", "teachers", "students", "requirements", "attachments"]
         validators = [
-            serializers.UniqueTogetherValidator(queryset=Course._default_manager.all(), fields=["owner", "code"])
+            serializers.UniqueTogetherValidator(
+                queryset=Course._default_manager.all(),
+                fields=["owner", "code"],
+                message=_("Owner can't create multiple courses with the same course code"),
+            )
         ]
         expandable_fields = {
             "owner": UserSerializer,
@@ -201,22 +291,12 @@ class CourseSerializer(FlexFieldsModelSerializer):
 
     def validate(self, data: dict) -> dict:
         """
-        Custom validation method
+        Custom validate method
         """
-        if self.instance is not None:  # An instance already exists
-            pass
-        else:
-            pass
-        return super().validate(data)
-
-    def create(self, validated_data: dict) -> Meta.model:
-        """
-        Custom creation method
-        """
-
-        course: self.Meta.model = super().create(validated_data)
-
-        # Create a course teacher instance for the owner
-        CourseTeacher._default_manager.create(teacher_id=course.owner_id, course_id=course.uid)
-
-        return course
+        instance = self.Meta.model(**data) if self.instance is None else self.instance
+        try:
+            instance.full_clean(**data)
+        except DjangoValidationError as exc:
+            # Converting Django ValidationError to DRF Serializer Validation Error
+            raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
+        return data

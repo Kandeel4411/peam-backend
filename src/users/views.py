@@ -57,7 +57,15 @@ class UserDetailView(GenericAPIView):
     serializer_class = UserSerializer
     lookup_field = "username"
 
-    @swagger_auto_schema(query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: UserSerializer()})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: UserSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
         Retrieves a user.
@@ -89,7 +97,6 @@ class BaseUserView(GenericAPIView):
         serializer = self.get_serializer(request.user, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=UserSerializer(),
@@ -112,10 +119,11 @@ class BaseUserView(GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(request.user, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
+
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
@@ -123,8 +131,11 @@ class BaseUserView(GenericAPIView):
 
         Removes related objects
         """
+        # Only setting user as inactive for now
         request.user.is_active = False
-        request.user.save()  # Only setting user as inactive for now
+
+        with transaction.atomic():
+            request.user.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -137,7 +148,6 @@ class BaseUserAvatarView(GenericAPIView):
     permission_classes = (IsAuthenticated,)
     parser_classes = (MultiPartParser,)
 
-    @transaction.atomic
     @swagger_auto_schema(request_body=AvatarSerializer(), responses={status.HTTP_200_OK: AvatarSerializer()})
     def patch(self, request, *args, **kwargs) -> Response:
         """
@@ -147,10 +157,11 @@ class BaseUserAvatarView(GenericAPIView):
         """
         serializer = self.get_serializer(instance=request.user, data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
+
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(responses={status.HTTP_204_NO_CONTENT: ""})
     def delete(self, request, *args, **kwargs) -> Response:
         """
@@ -158,7 +169,8 @@ class BaseUserAvatarView(GenericAPIView):
 
         .
         """
-        request.user.avatar.delete(save=True)
+        with transaction.atomic():
+            request.user.avatar.delete(save=True)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -181,14 +193,14 @@ class BaseUserProfileView(GenericAPIView):
         """
         queryset = User._default_manager
 
-        if is_expanded(self.request, "as_student_set"):
-            queryset = queryset.prefetch_related("as_student_set")
-        if is_expanded(self.request, "as_teacher_set"):
-            queryset = queryset.prefetch_related("as_teacher_set")
+        if is_expanded(self.request, "courses_taken"):
+            queryset = queryset.prefetch_related("courses_taken")
+        if is_expanded(self.request, "courses_taught"):
+            queryset = queryset.prefetch_related("courses_taught")
         if is_expanded(self.request, "teams"):
             queryset = queryset.prefetch_related("teams")
-        if is_expanded(self.request, "courses"):
-            queryset = queryset.prefetch_related("courses")
+        if is_expanded(self.request, "courses_owned"):
+            queryset = queryset.prefetch_related("courses_owned")
 
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(queryset.get(pk=request.user.pk), **config)
