@@ -184,7 +184,6 @@ class CourseInvitationDetailView(GenericAPIView):
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",
@@ -415,7 +414,6 @@ class TeamInvitationDetailView(GenericAPIView):
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",

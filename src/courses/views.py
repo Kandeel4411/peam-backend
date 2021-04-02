@@ -66,7 +66,6 @@ class CourseView(GenericAPIView):
 
         return queryset
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseSerializer(),
@@ -89,13 +88,15 @@ class CourseView(GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        course = serializer.save()
 
-        #  Link current course owner/request user as course teacher
-        data = {"teacher": course.owner_id, "course": course.uid}
-        course_teacher_serializer = CourseTeacherSerializer(data=data)
-        course_teacher_serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            course = serializer.save()
+
+            #  Link current course owner/request user as course teacher
+            data = {"teacher": course.owner_id, "course": course.uid}
+            course_teacher_serializer = CourseTeacherSerializer(data=data)
+            course_teacher_serializer.is_valid(raise_exception=True)
+            course_teacher_serializer.save()
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -181,7 +182,6 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseSerializer(),
@@ -220,10 +220,10 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",
@@ -246,7 +246,8 @@ class CourseDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
             message = _("Only the course owner can delete.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
-        instance.delete()
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -361,7 +362,6 @@ class CourseStudentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",
@@ -384,7 +384,8 @@ class CourseStudentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
             message = _("Only the course teachers can remove a student.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
-        instance.delete()
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -499,7 +500,6 @@ class CourseTeacherDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",
@@ -522,7 +522,8 @@ class CourseTeacherDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
             message = _("Only the course owner can remove a teacher.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
-        instance.delete()
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -583,7 +584,6 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"requirements": serializer.data})
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementSerializer(),
@@ -618,7 +618,8 @@ class ProjectRequirementView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -678,7 +679,6 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementSerializer(),
@@ -712,10 +712,10 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",
@@ -738,7 +738,8 @@ class ProjectRequirementDetailView(MultipleRequiredFieldLookupMixin, GenericAPIV
             message = _("Only course teachers can a update or delete project requirement.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
-        instance.delete()
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -797,7 +798,6 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"teams": serializer.data})
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=TeamSerializer(),
@@ -832,13 +832,15 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        team = serializer.save()
 
-        #  Link current request user as team student
-        data = {"student": request.user.uid, "team": team.uid}
-        team_student_serializer = TeamStudentSerializer(data=data)
-        team_student_serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            team = serializer.save()
+
+            #  Link current request user as team student
+            data = {"student": request.user.uid, "team": team.uid}
+            team_student_serializer = TeamStudentSerializer(data=data)
+            team_student_serializer.is_valid(raise_exception=True)
+            team_student_serializer.save()
 
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -897,7 +899,6 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=TeamSerializer(),
@@ -933,10 +934,10 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",
@@ -961,7 +962,8 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
             message = _("Only course teachers and team members can update or delete a team.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
-        instance.delete()
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -1008,7 +1010,6 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"attachments": serializer.data})
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseAttachmentSerializer(),
@@ -1043,7 +1044,8 @@ class CourseAttachmentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -1089,7 +1091,6 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=CourseAttachmentSerializer(),
@@ -1123,10 +1124,10 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",
@@ -1149,7 +1150,8 @@ class CourseAttachmentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIVie
             message = _("Only course teachers can a update or delete course attachment.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
-        instance.delete()
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -1197,7 +1199,6 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
         serializer = self.get_serializer(instances, many=True, **config)
         return Response({"attachments": serializer.data})
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementAttachmentSerializer(),
@@ -1232,7 +1233,8 @@ class ProjectRequirementAttachmentView(MultipleRequiredFieldLookupMixin, Generic
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -1279,7 +1281,6 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         serializer = self.get_serializer(instance, **config)
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectRequirementAttachmentSerializer(),
@@ -1313,10 +1314,10 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, data=request.data, partial=True, **config)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        with transaction.atomic():
+            serializer.save()
         return Response(serializer.data)
 
-    @transaction.atomic
     @swagger_auto_schema(
         responses={
             status.HTTP_204_NO_CONTENT: "",
@@ -1339,5 +1340,6 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
             message = _("Only course teachers can a update or delete project requirement attachment.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
-        instance.delete()
+        with transaction.atomic():
+            instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
