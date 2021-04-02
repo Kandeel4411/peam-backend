@@ -57,7 +57,15 @@ class UserDetailView(GenericAPIView):
     serializer_class = UserSerializer
     lookup_field = "username"
 
-    @swagger_auto_schema(query_serializer=FlexFieldsQuerySerializer(), responses={status.HTTP_200_OK: UserSerializer()})
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: UserSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
+    )
     def get(self, request, *args, **kwargs) -> Response:
         """
         Retrieves a user.
