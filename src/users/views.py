@@ -181,14 +181,14 @@ class BaseUserProfileView(GenericAPIView):
         """
         queryset = User._default_manager
 
-        if is_expanded(self.request, "as_student_set"):
-            queryset = queryset.prefetch_related("as_student_set")
-        if is_expanded(self.request, "as_teacher_set"):
-            queryset = queryset.prefetch_related("as_teacher_set")
+        if is_expanded(self.request, "courses_taken"):
+            queryset = queryset.prefetch_related("courses_taken")
+        if is_expanded(self.request, "courses_taught"):
+            queryset = queryset.prefetch_related("courses_taught")
         if is_expanded(self.request, "teams"):
             queryset = queryset.prefetch_related("teams")
-        if is_expanded(self.request, "courses"):
-            queryset = queryset.prefetch_related("courses")
+        if is_expanded(self.request, "courses_owned"):
+            queryset = queryset.prefetch_related("courses_owned")
 
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(queryset.get(pk=request.user.pk), **config)

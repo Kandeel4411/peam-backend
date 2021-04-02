@@ -20,18 +20,18 @@ from .constants import CourseInvitationType
 class Course(models.Model):
     uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE, related_name="courses"
+        settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE, related_name="courses_owned"
     )
     title = models.CharField(max_length=50, blank=False, null=False, verbose_name=_("Title"))
     code = CICharField(max_length=10, blank=False, null=False, verbose_name=_("Code"))
     description = models.CharField(max_length=300, blank=True, null=False, verbose_name=_("Description"))
-    teachers = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="as_teacher_set", through="CourseTeacher")
-    students = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="as_student_set", through="CourseStudent")
+    teachers = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="courses_taught", through="CourseTeacher")
+    students = models.ManyToManyField(settings.AUTH_USER_MODEL, related_name="courses_taken", through="CourseStudent")
 
     class Meta:
         managed = True
-        verbose_name = "Course"
-        verbose_name_plural = "Courses"
+        verbose_name = _("Course")
+        verbose_name_plural = _("Courses")
         constraints = [models.UniqueConstraint(fields=["owner", "code"], name="unique_course")]
         indexes = [models.Index(fields=("owner",), name="%(class)s_owner_index")]
 
@@ -45,8 +45,8 @@ class CourseTeacher(models.Model):
 
     class Meta:
         managed = True
-        verbose_name = "Course Teacher"
-        verbose_name_plural = "Course Teachers"
+        verbose_name = _("Course Teacher")
+        verbose_name_plural = _("Course Teachers")
         constraints = [models.UniqueConstraint(fields=["course", "teacher"], name="unique_course_Teacher")]
 
     def __str__(self) -> str:
@@ -69,8 +69,8 @@ class CourseStudent(models.Model):
 
     class Meta:
         managed = True
-        verbose_name = "Course Student"
-        verbose_name_plural = "Course Students"
+        verbose_name = _("Course Student")
+        verbose_name_plural = _("Course Students")
         constraints = [models.UniqueConstraint(fields=["student", "course"], name="unique_course_student")]
 
     def __str__(self) -> str:
@@ -97,8 +97,8 @@ class ProjectRequirement(models.Model):
 
     class Meta:
         managed = True
-        verbose_name = "Project Requirement"
-        verbose_name_plural = "Project Requirements"
+        verbose_name = _("Project Requirement")
+        verbose_name_plural = _("Project Requirements")
         constraints = [
             models.CheckConstraint(check=models.Q(from_dt__lte=models.F("to_dt")), name="date_constraint"),
             models.UniqueConstraint(fields=["title", "course"], name="unique_project_requirement"),
@@ -108,6 +108,16 @@ class ProjectRequirement(models.Model):
         from_dt = f"{timezone.localtime(self.from_dt):%Y-%m-%d}"
         to_dt = f"{timezone.localtime(self.to_dt):%Y-%m-%d}"
         return f"{self.course} from {from_dt} to {to_dt}"
+
+    def clean(self) -> None:
+        """
+        Model level validation hook
+        """
+        # Case: Checking that from_dt isn't larger than to_dt
+        if self.from_dt > self.to_dt:
+            raise ValidationError(
+                {"to_dt": _("Start date can't be less than the deadline.")},
+            )
 
 
 class ProjectRequirementAttachment(models.Model):
@@ -195,11 +205,12 @@ class TeamStudent(models.Model):
         Custom deletion call
         """
         student_count = self.__class__._default_manager.filter(team_id=self.team_id).count()
-        super().delete(*args, **kwargs)
+        return_data = super().delete(*args, **kwargs)
 
-        # This is the last team student
+        # This is the last team student, therefore delete team
         if student_count == 1:
             self.team.delete()
+        return return_data
 
 
 class CourseInvitation(BaseInvitation):
@@ -221,6 +232,23 @@ class CourseInvitation(BaseInvitation):
 
     def __str__(self) -> str:
         return f"{self.sender} invited {self.email}[{self.type}] to {self.course}"
+
+    def clean(self) -> None:
+        """
+        Model level validation hook
+        """
+        # Calling BaseInvitation clean hook
+        super().clean()
+
+        # Enforcing that if already in the course as either a student or a teacher then return an error
+        if CourseStudent._default_manager.filter(student__email=self.email, course_id=self.course_id).exists():
+            raise ValidationError(
+                {"email": _("A course student with this email already exists.")},
+            )
+        elif CourseTeacher._default_manager.filter(teacher__email=self.email, course_id=self.course_id).exists():
+            raise ValidationError(
+                {"email": _("A course teacher with this email already exists.")},
+            )
 
     def validate_unique(self, *args, **kwargs) -> None:
         """
@@ -301,6 +329,25 @@ class TeamInvitation(BaseInvitation):
 
     def __str__(self) -> str:
         return f"{self.sender} invited {self.email} to {self.team}"
+
+    def clean(self) -> None:
+        """
+        Model level validation hook
+        """
+        # Calling BaseInvitation clean hook
+        super().clean()
+
+        # Enforcing that a student can only belong to one team in each project requirement
+        if TeamStudent._default_manager.filter(
+            student__email=self.email, team__requirement_id=self.team.requirement_id
+        ).exists():
+            raise ValidationError(
+                {"email": _("A team student with this email already exists.")},
+            )
+
+        # Cant invite a none course student
+        if not CourseStudent._default_manager.filter(student__email=self.email, course_id=self.team.course_id).exists():
+            raise ValidationError({"email": _("Can only invite students that are in the course.")})
 
     def validate_unique(self, *args, **kwargs) -> None:
         """

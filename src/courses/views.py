@@ -26,6 +26,7 @@ from .serializers import (
     CourseStudentSerializer,
     CourseTeacherSerializer,
     TeamSerializer,
+    TeamStudentSerializer,
     ProjectRequirementAttachmentSerializer,
 )
 from .permissions import (
@@ -102,7 +103,14 @@ class CourseView(GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
+        course = serializer.save()
+
+        #  Link current course owner/request user as course teacher
+        data = {"teacher": course.owner_id, "course": course.uid}
+        course_teacher_serializer = CourseTeacherSerializer(data=data)
+        course_teacher_serializer.is_valid(raise_exception=True)
         serializer.save()
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @swagger_auto_schema(
@@ -612,7 +620,14 @@ class TeamView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(data=request.data, **config)
         serializer.is_valid(raise_exception=True)
+        team = serializer.save()
+
+        #  Link current request user as team student
+        data = {"student": request.user.uid, "team": team.uid}
+        team_student_serializer = TeamStudentSerializer(data=data)
+        team_student_serializer.is_valid(raise_exception=True)
         serializer.save()
+
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 

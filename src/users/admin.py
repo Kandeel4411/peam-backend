@@ -3,12 +3,15 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.translation import gettext_lazy as _
 
+from core.utils.inlines import EmailAddressInline
+
 User = get_user_model()
 
 
 # TODO make username readonly and change forms accordingly
 @admin.register(User)
 class UserAdmin(BaseUserAdmin):
+    inlines = [EmailAddressInline]
     fieldsets = (
         # original form fieldsets, expanded
         (None, {"fields": ("username", "password")}),

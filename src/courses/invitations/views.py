@@ -188,15 +188,15 @@ class CourseInvitationDetailView(GenericAPIView):
 
         Acceptance or denial of a course invitation.
         """
-        instance = self.get_object()
-
         request_serializer = CourseInvitationStatusRequestSerializer(
-            instance=instance, data=request.data, context=self.get_serializer_context()
+            data=request.data,
         )
         request_serializer.is_valid(raise_exception=True)
 
+        serializer = self.get_serializer(instance=self.get_object(), data=request_serializer.validated_data)
+
         with transaction.atomic():
-            request_serializer.save()
+            serializer.save()
 
         return Response(status=status.HTTP_200_OK)
 
@@ -355,14 +355,14 @@ class TeamInvitationDetailView(GenericAPIView):
 
         Acceptance or denial of a team invitation instance.
         """
-        instance = self.get_object()
-
         request_serializer = TeamInvitationStatusRequestSerializer(
-            instance=instance, data=request.data, context=self.get_serializer_context()
+            data=request.data,
         )
         request_serializer.is_valid(raise_exception=True)
 
+        serializer = self.get_serializer(instance=self.get_object(), data=request_serializer.validated_data)
+
         with transaction.atomic():
-            request_serializer.save()
+            serializer.save()
 
         return Response(status=status.HTTP_200_OK)

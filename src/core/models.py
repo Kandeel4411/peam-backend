@@ -1,5 +1,6 @@
 import uuid
 
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
@@ -69,7 +70,28 @@ class BaseInvitation(models.Model):
             ),
         ]
 
-    def save(self, *args, **kwargs):
+    def clean(self) -> None:
+        """
+        Model level validation hook
+        """
+        if self.pk is not None:  # An update
+            # Status is already accepted
+            if self.status == InvitationStatus.ACCEPTED:
+                raise ValidationError({"status": _("Invitation is already accepted.")})
+
+            # Status is already rejected
+            elif self.status == InvitationStatus.REJECTED:
+                raise ValidationError({"status": _("Invitation is already rejected.")})
+
+            # Status is already expired
+            elif self.invitation_expired(save=True):
+                raise ValidationError({"expiry_date": _("Invitation is already expired.")})
+
+        # Expiry date can't be less than the creation date
+        if self.expiry_date <= self.created_at:
+            raise ValidationError({"expiry_date": _("Expiry date can't be less than the creation date.")})
+
+    def save(self, *args, **kwargs) -> None:
         """
         Custom save method
         """
