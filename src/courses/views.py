@@ -890,7 +890,7 @@ class TeamDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         # Only those who belong to the course can retrieve
         authorized = is_course_teacher(
             user=request.user, course_id=instance.requirement.course_id
-        ) or is_course_student(user=request.user, course_id=instance.course_id)
+        ) or is_course_student(user=request.user, course_id=instance.requirement.course_id)
         if not authorized:
             message = _("User must be either a student or a teacher of the course.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
