@@ -106,7 +106,7 @@ class ProjectRequirementAttachmentSerializer(FlexFieldsModelSerializer):
         """
         instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
-            instance.full_clean(**data)
+            instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
             raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
@@ -144,7 +144,7 @@ class ProjectRequirementSerializer(FlexFieldsModelSerializer):
         """
         instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
-            instance.full_clean(**data)
+            instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
             raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
@@ -168,7 +168,7 @@ class CourseAttachmentSerializer(FlexFieldsModelSerializer):
         """
         instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
-            instance.full_clean(**data)
+            instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
             raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
@@ -201,7 +201,7 @@ class CourseStudentSerializer(FlexFieldsModelSerializer):
         """
         instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
-            instance.full_clean(**data)
+            instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
             raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
@@ -234,7 +234,7 @@ class CourseTeacherSerializer(FlexFieldsModelSerializer):
         """
         instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
-            instance.full_clean(**data)
+            instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
             raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
@@ -295,7 +295,7 @@ class CourseSerializer(FlexFieldsModelSerializer):
         """
         instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
-            instance.full_clean(**data)
+            instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
             raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
