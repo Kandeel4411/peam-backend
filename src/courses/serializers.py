@@ -216,7 +216,6 @@ class CourseTeacherSerializer(FlexFieldsModelSerializer):
     class Meta:
         model = CourseTeacher
         fields = ["teacher", "course"]
-        read_only_fields = ["course", "teacher"]
         expandable_fields = {
             "teacher": UserSerializer,
         }
