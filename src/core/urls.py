@@ -7,50 +7,12 @@ from rest_framework.permissions import AllowAny
 
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
-from dj_rest_auth.registration.views import RegisterView, VerifyEmailView, ConfirmEmailView
-from dj_rest_auth.views import (
-    LogoutView,
-    PasswordResetConfirmView,
-    PasswordResetView,
-)
-
-from .auth.views import LoginView  # Already .as_view
-
-
-# Authentication / Registration routes
-auth_patterns = [
-    path("signup/", RegisterView.as_view(), name="rest_register"),
-    # Route to confirm email
-    path("signup/verify-email/", VerifyEmailView.as_view(), name="account_email_verification_sent"),
-    # Route to email form to reset password
-    path("password/reset/", PasswordResetView.as_view(), name="rest_password_reset"),
-    # Route to reset password
-    path(
-        "password/reset/confirm/",
-        PasswordResetConfirmView.as_view(),
-        name="rest_password_reset_confirm",
-    ),
-    path("login/", LoginView, name="rest_login"),
-    # Routes that require logged in user
-    path("logout/", LogoutView.as_view(), name="rest_logout"),
-]
-
-
-if getattr(settings, "REST_USE_JWT", False):
-    from rest_framework_simplejwt.views import TokenVerifyView
-    from dj_rest_auth.jwt_auth import get_refresh_view
-
-    auth_patterns += [
-        path("token/verify/", TokenVerifyView.as_view(), name="token_verify"),
-        path("token/refresh/", get_refresh_view().as_view(), name="token_refresh"),
-    ]
-
 
 # Api routes
 api_patterns = [
     path("api/v1/", include("courses.urls")),
     path("api/v1/", include("users.urls")),
-    path("api/v1/auth/", include(auth_patterns), name="rest_auth"),
+    path("api/v1/", include("authentication.urls"), name="rest_auth"),
 ]
 
 

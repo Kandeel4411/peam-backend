@@ -7,8 +7,8 @@ from rest_framework.test import APIClient
 from rest_framework.views import status, Response
 from rest_framework_simplejwt.tokens import AccessToken
 
-from users.tests.factories import UserFactory
-from core.auth.serializers import CustomTokenObtainPairSerializer
+from authentication.serializers import CustomTokenObtainPairSerializer
+from ..factories.users import UserFactory
 
 
 User = get_user_model()
