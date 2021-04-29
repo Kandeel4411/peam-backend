@@ -53,8 +53,9 @@ THIRD_PARTY_APPS = [
 
 LOCAL_APPS = [
     "users.apps.UsersConfig",
-    "courses.apps.CoursesConfig",
     "core.apps.CoreConfig",
+    "authentication.apps.AuthenticationConfig",
+    "courses.apps.CoursesConfig",
 ]
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
@@ -101,11 +102,11 @@ JWT_AUTH_SAMESITE = "Lax"
 OLD_PASSWORD_FIELD_ENABLED = True
 
 REST_AUTH_SERIALIZERS = {
-    "JWT_TOKEN_CLAIMS_SERIALIZER": "core.auth.serializers.CustomTokenObtainPairSerializer",
+    "JWT_TOKEN_CLAIMS_SERIALIZER": "authentication.serializers.CustomTokenObtainPairSerializer",
     "USER_DETAILS_SERIALIZER": "users.serializers.UserSerializer",
 }
 
-REST_AUTH_REGISTER_SERIALIZERS = {"REGISTER_SERIALIZER": "core.auth.serializers.CustomRegisterSerializer"}
+REST_AUTH_REGISTER_SERIALIZERS = {"REGISTER_SERIALIZER": "authentication.serializers.CustomRegisterSerializer"}
 
 # django-allauth
 # ------------------------------------------------------------------------------
