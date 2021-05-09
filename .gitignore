@@ -92,3 +92,5 @@ logs/
 staticfiles/
 media/
 linux-venv/
+plagiarism/build/
+plagiarism/vendor/
