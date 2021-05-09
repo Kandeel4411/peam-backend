@@ -84,6 +84,9 @@ FRONTEND_LOGIN_URL = "login/"
 FRONTEND_COURSE_INVITATION_PARAM = "course-invitation"
 FRONTEND_TEAM_INVITATION_PARAM = "team-invitation"
 
+# plagiarism detection - tree-sitter
+PLAG_SUPPORTED_LANGAUGES = ["src/plagiarism/vendor/tree-sitter-javascript", "src/plagiarism/vendor/tree-sitter-python"]
+PLAG_COMPILED_LIBRARY = "src/plagiarism/build/languages.so"
 
 # drf-flex-fields
 # ------------------------------------------------------------------------------

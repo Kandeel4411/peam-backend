@@ -36,6 +36,13 @@ FROM base as dependencies
 
 # psycopg2 building requirements
 RUN apt-get install -y --no-install-recommends libpq-dev gcc python3-dev
+
+# tree-sitter building requirements
+RUN apt-get install -y --no-install-recommends git
+# Cloning supported languages
+RUN git clone https://github.com/tree-sitter/tree-sitter-javascript
+RUN git clone https://github.com/tree-sitter/tree-sitter-python
+
 # Error checking for psycopg2
 RUN pg_config --version
 
@@ -86,6 +93,10 @@ EXPOSE 8000
 WORKDIR /app
 COPY . /app
 
+# copy cloned languages
+COPY --from=dev-dependencies /tree-sitter-javascript src/plagiarism/vendor/tree-sitter-javascript
+COPY --from=dev-dependencies /tree-sitter-python src/plagiarism/vendor/tree-sitter-python
+
 RUN chmod +x docker/entrypoint.sh
 RUN chmod +x docker/.dev/start.sh
 
@@ -115,6 +126,10 @@ ENV PATH="/opt/venv/bin:$PATH"
 EXPOSE 8000
 WORKDIR /app
 COPY . /app
+
+# copy cloned languages
+COPY --from=dependencies /tree-sitter-javascript src/plagiarism/vendor/tree-sitter-javascript
+COPY --from=dependencies /tree-sitter-python src/plagiarism/vendor/tree-sitter-python
 
 RUN chmod +x docker/entrypoint.sh
 RUN chmod +x docker/.prod/start.sh
