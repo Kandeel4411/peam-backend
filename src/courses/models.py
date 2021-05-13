@@ -14,6 +14,7 @@ from django.urls import reverse
 
 from core.utils.tz import local_timezone_now
 from core.models import BaseInvitation
+from core.constants import InvitationStatus
 from .constants import CourseInvitationType
 
 
@@ -261,7 +262,7 @@ class CourseInvitation(BaseInvitation):
         # created another account with the old email which would render the previously accepted invitation invalid for
         # the old email.
         if CourseInvitation._default_manager.filter(
-            ~models.Q(pk=self.pk), email=self.email, course_id=self.course_id, status=self.PENDING
+            ~models.Q(pk=self.pk), email=self.email, course_id=self.course_id, status=InvitationStatus.PENDING
         ).exists():
             raise ValidationError({"email": _("A course invitation with this email already exists that is pending.")})
 
@@ -360,7 +361,7 @@ class TeamInvitation(BaseInvitation):
         # created another account with the old email which would render the previously accepted invitation invalid for
         # the old email.
         if TeamInvitation._default_manager.filter(
-            ~models.Q(pk=self.pk), email=self.email, team_id=self.team_id, status=self.PENDING
+            ~models.Q(pk=self.pk), email=self.email, team_id=self.team_id, status=InvitationStatus.PENDING
         ).exists():
             raise ValidationError({"email": _("A team invitation with this email already exists that is pending.")})
 
