@@ -12,6 +12,7 @@ from rest_flex_fields import is_expanded
 from core.utils.mixins import MultipleRequiredFieldLookupMixin
 from core.utils.flex_fields import get_flex_serializer_config, FlexFieldsQuerySerializer
 from core.utils.openapi import openapi_error_response
+from core.constants import InvitationStatus
 from courses.models import CourseInvitation, Course, TeamInvitation, Team, TeamStudent
 from courses.utils import is_course_student, is_course_teacher, is_course_owner, is_team_student
 from .serializers import (
@@ -119,6 +120,7 @@ class CourseInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         fail = []
         for email in emails:
             data["email"] = email
+            data["status"] = InvitationStatus.PENDING
             serializer = self.get_serializer(data=data)
             if serializer.is_valid(raise_exception=False):
                 serializer.save()
@@ -349,6 +351,7 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         fail = []
         for email in emails:
             data["email"] = email
+            data["status"] = InvitationStatus.PENDING
             serializer = self.get_serializer(data=data)
             if serializer.is_valid(raise_exception=False):
                 serializer.save()
