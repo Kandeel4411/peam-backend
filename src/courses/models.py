@@ -115,7 +115,7 @@ class ProjectRequirement(models.Model):
         Model level validation hook
         """
         # Case: Checking that from_dt isn't larger than to_dt
-        if self.from_dt > self.to_dt:
+        if (self.to_dt and self.from_dt) and self.from_dt > self.to_dt:
             raise ValidationError(
                 {"to_dt": _("Start date can't be less than the deadline.")},
             )
@@ -251,6 +251,18 @@ class CourseInvitation(BaseInvitation):
                 {"email": _("A course teacher with this email already exists.")},
             )
 
+        # Sender can't invite himself
+        if self.sender.email == self.email:
+            raise ValidationError({"sender": _("Sender can't invite himself to the course")})
+
+        # If the invite is for a teacher then only the course owner can invite them
+        if self.course.owner != self.sender and self.type == CourseInvitationType.TEACHER_INVITE:
+            raise ValidationError({"type": _("Only the course owner can invite other teachers.")})
+
+        # only course teachers can invite
+        if not CourseTeacher._default_manager.filter(teacher_id=self.sender_id, course_id=self.course_id).exists():
+            raise ValidationError({"sender": _("Only course teachers can send a course invite")})
+
     def validate_unique(self, *args, **kwargs) -> None:
         """
         Custom validate unique method
@@ -347,8 +359,18 @@ class TeamInvitation(BaseInvitation):
             )
 
         # Cant invite a none course student
-        if not CourseStudent._default_manager.filter(student__email=self.email, course_id=self.team.course_id).exists():
+        if not CourseStudent._default_manager.filter(
+            student__email=self.email, course_id=self.team.requirement.course_id
+        ).exists():
             raise ValidationError({"email": _("Can only invite students that are in the course.")})
+
+        # Sender can't invite himself
+        if self.sender.email == self.email:
+            raise ValidationError({"sender": _("Sender can't invite himself to the team")})
+
+        # Only existing team members can invite
+        if not TeamStudent._default_manager.filter(student_id=self.sender_id, team_id=self.team_id).exists():
+            raise ValidationError({"sender": _("Only team members can send a team invite")})
 
     def validate_unique(self, *args, **kwargs) -> None:
         """
