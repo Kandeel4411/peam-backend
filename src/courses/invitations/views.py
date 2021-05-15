@@ -245,7 +245,8 @@ class CourseInvitationDetailView(GenericAPIView):
         )
         request_serializer.is_valid(raise_exception=True)
 
-        serializer = self.get_serializer(instance=instance, data=request_serializer.validated_data)
+        serializer = self.get_serializer(instance=instance, data=request_serializer.validated_data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
             serializer.save()
@@ -476,7 +477,8 @@ class TeamInvitationDetailView(GenericAPIView):
         )
         request_serializer.is_valid(raise_exception=True)
 
-        serializer = self.get_serializer(instance=instance, data=request_serializer.validated_data)
+        serializer = self.get_serializer(instance=instance, data=request_serializer.validated_data, partial=True)
+        serializer.is_valid(raise_exception=True)
 
         with transaction.atomic():
             serializer.save()
