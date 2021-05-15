@@ -56,8 +56,6 @@ class CourseInvitationSerializer(FlexFieldsModelSerializer):
     *Note:* request is expected to be included in the context.
     """
 
-    sender = serializers.SlugRelatedField(slug_field="uid", many=False, read_only=True)
-
     class Meta:
         model = CourseInvitation
         fields = ["token", "sender", "course", "type", "status", "email", "expiry_date", "created_at"]
@@ -78,10 +76,10 @@ class CourseInvitationSerializer(FlexFieldsModelSerializer):
             if self.instance is not None:  # An instance already exists
                 instance = self.instance
             else:
-                instance = self.Meta.model(**data)
+                sender = self.context["request"].user
+                instance = self.Meta.model(**data, sender=sender)
 
                 email: str = data["email"]
-                sender = self.context["request"].user
                 # The sender can't invite himself
                 if email == sender.email:
                     raise serializers.ValidationError(detail={"email": _("Sender can't invite himself to the course")})
@@ -169,8 +167,6 @@ class TeamInvitationSerializer(FlexFieldsModelSerializer):
     *Note:* request is expected to be included in the context.
     """
 
-    sender = serializers.SlugRelatedField(slug_field="uid", many=False, read_only=True)
-
     class Meta:
         model = TeamInvitation
         fields = ["token", "sender", "team", "status", "email", "expiry_date", "created_at"]
@@ -188,9 +184,9 @@ class TeamInvitationSerializer(FlexFieldsModelSerializer):
             if self.instance is not None:  # An instance already exists
                 instance = self.instance
             else:
-                instance = self.Meta.model(**data)
-
                 sender = self.context["request"].user
+                instance = self.Meta.model(**data, sender=sender)
+
                 email = data["email"]
                 # The sender can't invite himself
                 if email == sender.email:
