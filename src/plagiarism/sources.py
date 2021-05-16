@@ -1,5 +1,5 @@
 import difflib
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict, List
 
 
 from django.conf import settings
@@ -15,7 +15,7 @@ class SupportedLanguages:
 
     python: str = "python"
     javascript: str = "javascript"
-    exts: dict[str] = {".py": python, ".js": javascript}
+    exts: Dict[str, str] = {".py": python, ".js": javascript}
 
     @classmethod
     def get_language(cls, language: str) -> Optional[Language]:
@@ -55,15 +55,20 @@ def parse_source(source: str, ext: str) -> Optional[Tree]:
 
 
 def detect_plagiarism(
-    tokens1: list[Token], tokens2: list[Token], source1: str, source2: str, marker: str
+    tokens1: List[Token], tokens2: List[Token], source1: str, source2: str, marker: str = "@"
 ) -> Tuple[str, str, float]:
     """
     Takes 2 Token lists and source codes and detects possible plagiarism by matching sequences. Returns newly marked
     sources and plagiarism ratio.
+
     :tokens1: list of tokens that were generated from source1
+
     :tokens2: list of tokens that were generated from source2
+
     :source1: first source code
+
     :source2: second source code
+
     :marker: character marker that will be used to mark matchs
     """
     seq_matcher = difflib.SequenceMatcher(None, tokens1, tokens2)
