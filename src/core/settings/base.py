@@ -135,7 +135,7 @@ ACCOUNT_PRESERVE_USERNAME_CASING = False  # Always save username in lowercase
 ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = True
 ACCOUNT_LOGIN_ON_PASSWORD_RESET = False
 
-ACCOUNT_ADAPTER = "core.authentication.adapters.CustomAccountAdapter"
+ACCOUNT_ADAPTER = "authentication.adapters.CustomAccountAdapter"
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "http"
 
 # djangorestframework-simplejwt
