@@ -33,16 +33,16 @@ def tokenize_source(old_source, new_source, marker="@", start_token="{{", end_to
     for old_ch, new_ch in zip(old_source, new_source):
         if new_ch == marker and new_ch != old_ch:
             if not word_start:
-                tokenized_source += "{{"
+                tokenized_source += start_token
                 word_start = True
         else:
             if word_start:
-                tokenized_source += "}}"
+                tokenized_source += end_token
                 word_start = False
         tokenized_source += old_ch
 
     if word_start:
-        tokenized_source += "}}"
+        tokenized_source += end_token
     return tokenized_source
 
 
@@ -146,7 +146,15 @@ class Command(BaseCommand):
                         + new_second_source[tkn.line[1] :]
                     )
 
-        print(tokenize_source(old_source=first_source, new_source=new_first_source))
+        print(
+            tokenize_source(
+                old_source=first_source, new_source=new_first_source, start_token="\033[94m", end_token="\033[0m"
+            )
+        )
         print("\n----------")
-        print(tokenize_source(old_source=second_source, new_source=new_second_source))
+        print(
+            tokenize_source(
+                old_source=second_source, new_source=new_second_source, start_token="\033[94m", end_token="\033[0m"
+            )
+        )
         print(f"\n\nPlagiarism Percentage: {seq_matcher.ratio()*100}%")

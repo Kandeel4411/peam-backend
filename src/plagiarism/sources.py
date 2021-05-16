@@ -110,14 +110,14 @@ def tokenize_source(
     for old_ch, new_ch in zip(source, marked_source):
         if new_ch == marker and new_ch != old_ch:
             if not word_start:
-                tokenized_source += "{{"
+                tokenized_source += start_token
                 word_start = True
         else:
             if word_start:
-                tokenized_source += "}}"
+                tokenized_source += end_token
                 word_start = False
         tokenized_source += old_ch
 
     if word_start:
-        tokenized_source += "}}"
+        tokenized_source += end_token
     return tokenized_source
