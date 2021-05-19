@@ -13,12 +13,22 @@ from django.utils import timezone
 from django.contrib.postgres.fields import CICharField
 
 
+def _avatar_upload_path(instance: "User", filename: str) -> str:
+    """
+    Custom Callable that is passed to django's FileField for uploading
+
+    Uploads files under "avatars/<uid>_<filename>"
+
+    """
+    return f"avatars/{instance.uid}_{filename}"
+
+
 # https://docs.djangoproject.com/en/3.1/topics/auth/customizing/#using-a-custom-user-model-when-starting-a-project
 class User(AbstractBaseUser, PermissionsMixin):
     """ Custom Django User """
 
     uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
-    avatar = models.ImageField(upload_to="avatars", null=True, blank=True, verbose_name=_("Profile Picture"))
+    avatar = models.ImageField(upload_to=_avatar_upload_path, null=True, blank=True, verbose_name=_("Profile Picture"))
     email = models.EmailField(verbose_name=_("Email address"), unique=True, null=False, blank=False)
     name = models.CharField(_("Name"), max_length=150, blank=True, null=False)
 
