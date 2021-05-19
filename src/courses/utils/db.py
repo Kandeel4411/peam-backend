@@ -1,6 +1,6 @@
 from typing import Optional
 
-from .models import (
+from ..models import (
     CourseStudent,
     CourseTeacher,
     TeamStudent,
@@ -93,6 +93,6 @@ def is_team_student(
         return TeamStudent._default_manager.filter(
             team__requirement__course__owner__username=owner_username,
             team__requirement__course__code=code,
-            team__requirement_title=requirement_title,
+            team__requirement__title=requirement_title,
             student_id=user.uid,
         ).exists()

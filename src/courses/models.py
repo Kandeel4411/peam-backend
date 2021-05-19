@@ -1,8 +1,10 @@
 import uuid
+import zipfile
 from typing import Optional
 
 from django.db import models, transaction
 from django.db import IntegrityError
+from django.core.validators import MinValueValidator
 from django.conf import settings
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -95,6 +97,14 @@ class ProjectRequirement(models.Model):
     description = models.CharField(max_length=300, blank=True, null=False, verbose_name=_("Description"))
     to_dt = models.DateTimeField(blank=False, verbose_name=_("Deadline"))
     from_dt = models.DateTimeField(default=timezone.now, blank=True, verbose_name=("Start date"))
+    total_marks = models.DecimalField(
+        verbose_name=_("Total Marks"),
+        blank=True,
+        null=True,
+        decimal_places=2,
+        max_digits=4,
+        validators=[MinValueValidator(limit_value=0, message="Total marks can't be zero or below.")],
+    )
 
     class Meta:
         managed = True
@@ -119,6 +129,45 @@ class ProjectRequirement(models.Model):
             raise ValidationError(
                 {"to_dt": _("Start date can't be less than the deadline.")},
             )
+
+
+class ProjectRequirementGrade(models.Model):
+    requirement = models.ForeignKey(ProjectRequirement, to_field="uid", on_delete=models.CASCADE, related_name="grades")
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL, to_field="uid", on_delete=models.CASCADE, related_name="grades"
+    )
+    marks = models.DecimalField(
+        verbose_name=_("Marks"),
+        blank=False,
+        null=False,
+        decimal_places=2,
+        max_digits=4,
+        validators=[MinValueValidator(limit_value=-1, message="Marks can't be below zero.")],
+    )
+    note = models.CharField(max_length=300, blank=True, null=False, verbose_name=_("Note"))
+
+    class Meta:
+        managed = True
+        verbose_name = "Project Requirement Grade"
+        verbose_name_plural = "Project Requirement Grades"
+        constraints = [
+            models.UniqueConstraint(fields=["student", "requirement"], name="unique_requirement_grade"),
+        ]
+        indexes = [models.Index(fields=("requirement",), name="%(class)s_index")]
+
+    def __str__(self) -> str:
+        return f"{self.requirement}: {self.student} got {self.mark}"
+
+    def clean(self) -> None:
+        """
+        Model level validation hook
+        """
+        # Checking if the mark isn't higher than the set requirement total mark
+        if (total_marks := self.requirement.total_marks) is not None:
+            if self.marks > total_marks:
+                raise ValidationError(
+                    {"marks": _("Marks given can't be higher than the set total marks.")},
+                )
 
 
 class ProjectRequirementAttachment(models.Model):
@@ -172,6 +221,57 @@ class Team(models.Model):
 
     def __str__(self) -> str:
         return f"{self.name} - {self.requirement}"
+
+
+def _project_upload_path(instance: "Project", filename: str) -> str:
+    """
+    Custom Callable that is passed to django's FileField for uploading
+
+    Uploads files under "projects/req_<requirement-uid>/<team-name>_<filename>"
+
+    """
+    return f"projects/req_{instance.team.requirement_id}/{instance.team.name}_{filename}"
+
+
+class Project(models.Model):
+    uid = models.UUIDField(unique=True, default=uuid.uuid4, editable=False)
+    team = models.OneToOneField(Team, on_delete=models.CASCADE, to_field="uid")
+    title = models.CharField(max_length=50, blank=False, null=False, verbose_name=_("Title"))
+    description = models.CharField(max_length=300, blank=True, null=False, verbose_name=_("Description"))
+    project_zip = models.FileField(
+        verbose_name=_("Project Compressed file"), upload_to=_project_upload_path, blank=False, null=False
+    )
+
+    class Meta:
+        managed = True
+        verbose_name = "Project"
+        verbose_name_plural = "Projects"
+
+    def __str__(self) -> str:
+        return f"{self.team} - {self.title}"
+
+    def clean(self) -> None:
+        """
+        Model level validation hook
+        """
+        if self.project_zip._file is not None:
+            if zipfile.is_zipfile(self.project_zip.file):
+                raise ValidationError({"project_zip": _('Can only upload ".zip" compressed files')})
+            try:
+                # Checking integrity of zipfile
+                with zipfile.ZipFile(self.project_zip.file) as zfile:
+                    if zfile.testzip() is not None:
+                        raise ValidationError(
+                            {
+                                "project_zip": _(
+                                    "Faulty files were found in the zip file. Please upload a valid zip file"
+                                )
+                            }
+                        )
+            except zipfile.BadZipfile:
+                raise ValidationError(
+                    {"project_zip": _("Wasn't able to open zip file. Please upload a valid zip file.")}
+                )
 
 
 class TeamStudent(models.Model):

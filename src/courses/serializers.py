@@ -5,6 +5,7 @@ from django.utils.translation import gettext_lazy as _
 from rest_flex_fields import FlexFieldsModelSerializer
 
 from users.serializers import UserSerializer
+from .project_uploading.serializers import ProjectSerializer
 from .models import (
     ProjectRequirement,
     Course,
@@ -23,15 +24,14 @@ User = get_user_model()
 class TeamSerializer(FlexFieldsModelSerializer):
     """
     A serializer responsible for handling Team instances.
-
-    *Note*: request is expected to be passed in the context.
     """
 
     students = serializers.SlugRelatedField(slug_field="uid", read_only=True, many=True)
+    project = serializers.SlugRelatedField(slug_field="uid", read_only=True)
 
     class Meta:
         model = Team
-        fields = ["uid", "name", "requirement", "students"]
+        fields = ["uid", "name", "requirement", "students", "project"]
         read_only_fields = ["uid"]
         extra_kwargs = {
             "requirement": {"write_only": True},
@@ -43,16 +43,23 @@ class TeamSerializer(FlexFieldsModelSerializer):
                 message=_("A team with the same name already exists in the project requirement."),
             )
         ]
-        expandable_fields = {
-            "students": (UserSerializer, {"many": True}),
-        }
+        expandable_fields = {"students": (UserSerializer, {"many": True}), "project": ProjectSerializer}
 
     def validate(self, data: dict) -> dict:
         """
         Custom validation method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance = self.instance
+
+                # Updating requirement is meaningless but is subject to change
+                if "requirement" in data:
+                    raise serializers.ValidationError(
+                        detail={"requirement": _("Can't change a team to a different requirement")}
+                    )
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
@@ -123,7 +130,7 @@ class ProjectRequirementSerializer(FlexFieldsModelSerializer):
 
     class Meta:
         model = ProjectRequirement
-        fields = ["uid", "title", "course", "description", "to_dt", "from_dt", "teams", "attachments"]
+        fields = ["uid", "title", "course", "description", "to_dt", "from_dt", "teams", "attachments", "total_marks"]
         read_only_fields = ["uid", "teams", "attachments"]
         extra_kwargs = {"course": {"write_only": True}}
         validators = [
