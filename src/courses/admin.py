@@ -5,14 +5,16 @@ from .inlines import (
     CourseAttachmentInline,
     CourseTeacherInline,
     ProjectRequirementAttachmentInline,
+    ProjectRequirementGradeInline,
     CourseStudentInline,
     TeamStudentInline,
+    ProjectInline,
 )
 
 
 @admin.register(Team)
 class TeamAdmin(admin.ModelAdmin):
-    inlines = [TeamStudentInline]
+    inlines = [TeamStudentInline, ProjectInline]
 
 
 @admin.register(CourseInvitation)
@@ -32,4 +34,4 @@ class CourseAdmin(admin.ModelAdmin):
 
 @admin.register(ProjectRequirement)
 class ProjectRequirementAdmin(admin.ModelAdmin):
-    inlines = [ProjectRequirementAttachmentInline]
+    inlines = [ProjectRequirementAttachmentInline, ProjectRequirementGradeInline]

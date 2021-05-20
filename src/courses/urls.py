@@ -6,6 +6,7 @@ from .invitations.views import (
     TeamInvitationView,
     TeamInvitationDetailView,
 )
+from .project_uploading.views import ProjectView, ProjectDetailView, ProjectFileView, ProjectFileDetailView
 from .views import (
     CourseView,
     CourseStudentView,
@@ -15,6 +16,8 @@ from .views import (
     CourseDetailView,
     TeamView,
     TeamDetailView,
+    TeamStudentView,
+    TeamStudentDetailView,
     ProjectRequirementView,
     ProjectRequirementDetailView,
     CourseAttachmentView,
@@ -52,6 +55,18 @@ requirement_attachment_detail_pattern = f"{requirement_attachment_pattern}<slug:
 requirement_team_pattern = f"{requirement_detail_pattern}teams/"
 requirement_team_detail_pattern = f"{requirement_team_pattern}<str:team_name>/"
 
+# Project requirement team student patterns
+requirement_team_student_pattern = f"{requirement_team_detail_pattern}students/"
+requirement_team_student_detail_pattern = f"{requirement_team_student_pattern}<str:team_student>/"
+
+# Project requirement team project patterns
+requirement_team_project_pattern = f"{requirement_team_detail_pattern}project/"
+requirement_team_project_detail_pattern = f"{requirement_team_project_pattern}<str:project_title>/"
+
+# Project requirement team project file patterns
+requirement_team_project_file_pattern = f"{requirement_team_project_detail_pattern}files/"
+requirement_team_project_file_detail_pattern = f"{requirement_team_project_file_pattern}<path:path>/"
+
 # Project requirement team invitation patterns
 requirement_team_invitation_pattern = f"{requirement_team_detail_pattern}invitations/"
 requirement_team_invitation_detail_pattern = f"{course_pattern}requirements/teams/invitations/<str:token>/"
@@ -88,6 +103,20 @@ urlpatterns = [
         TeamDetailView.as_view(),
         name="teams-detail",
     ),
+    path(
+        requirement_team_student_pattern,
+        TeamStudentView.as_view(),
+        name="team-students",
+    ),
+    path(
+        requirement_team_student_detail_pattern,
+        TeamStudentDetailView.as_view(),
+        name="team-students-detail",
+    ),
+    path(requirement_team_project_pattern, ProjectView.as_view(), name="project"),
+    path(requirement_team_project_detail_pattern, ProjectDetailView.as_view(), name="project-detail"),
+    path(requirement_team_project_file_pattern, ProjectFileView.as_view(), name="project-files"),
+    path(requirement_team_project_file_detail_pattern, ProjectFileDetailView.as_view(), name="project-files-detail"),
     path(
         requirement_team_invitation_pattern,
         TeamInvitationView.as_view(),
