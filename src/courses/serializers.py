@@ -82,6 +82,10 @@ class TeamStudentSerializer(FlexFieldsModelSerializer):
                 message=_("Student already belongs to the team."),
             )
         ]
+        expandable_fields = {
+            "student": UserSerializer,
+            "team": TeamSerializer,
+        }
 
     def validate(self, data: dict) -> dict:
         """

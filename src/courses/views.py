@@ -15,6 +15,7 @@ from .models import (
     CourseStudent,
     CourseTeacher,
     Team,
+    TeamStudent,
     ProjectRequirement,
     CourseAttachment,
     ProjectRequirementAttachment,
@@ -1338,6 +1339,160 @@ class ProjectRequirementAttachmentDetailView(MultipleRequiredFieldLookupMixin, G
         authorized = is_course_teacher(user=request.user, course_id=instance.course_id)
         if not authorized:
             message = _("Only course teachers can a update or delete project requirement attachment.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        with transaction.atomic():
+            instance.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class TeamStudentView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for team student.
+    """
+
+    queryset = TeamStudent._default_manager.all()
+    serializer_class = TeamStudentSerializer
+    lookup_fields = {
+        "course_owner": "team__requirement__course__owner__username",
+        "course_code": "team__requirement__course__code",
+        "requirement_title": "team__requirement__title",
+        "team_name": "team__name",
+    }
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        # Optimizing queries
+        if is_expanded(self.request, "team"):
+            queryset = queryset.select_related("team")
+        if is_expanded(self.request, "student"):
+            queryset = queryset.select_related("student")
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: TeamStudentSerializer(many=True),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        List team students.
+
+        Expansion query params apply*
+        """
+
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
+            user=request.user, code=code, owner_username=username
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        instances = self.filter_queryset(self.get_queryset())
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instances, many=True, **config)
+        return Response({"students": serializer.data})
+
+
+class TeamStudentDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for a specific team student.
+    """
+
+    queryset = TeamStudent._default_manager.all()
+    serializer_class = TeamStudentSerializer
+    lookup_fields = {
+        "course_owner": "team__requirement__course__owner__username",
+        "course_code": "team__requirement__course__code",
+        "requirement_title": "team__requirement__title",
+        "team_name": "team__name",
+        "team_student": {"filter_kwarg": "student__username", "pk": True},
+    }
+
+    def get_queryset(self):
+        """
+        Custom get_queryset
+        """
+        queryset = super().get_queryset()
+
+        # Optimizing queries
+        if is_expanded(self.request, "team"):
+            queryset = queryset.select_related("team")
+        if is_expanded(self.request, "student"):
+            queryset = queryset.select_related("student")
+
+        return queryset
+
+    @swagger_auto_schema(
+        query_serializer=FlexFieldsQuerySerializer(),
+        responses={
+            status.HTTP_200_OK: TeamStudentSerializer(),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        Retrieves a team student.
+
+        Expansion query params apply*
+        """
+        instance = self.get_object()
+
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only those who belong to the course can retrieve
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_course_student(
+            user=request.user, code=code, owner_username=username
+        )
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        config = get_flex_serializer_config(request)
+        serializer = self.get_serializer(instance, **config)
+        return Response(serializer.data)
+
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_204_NO_CONTENT: "",
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        }
+    )
+    def delete(self, request, *args, **kwargs) -> Response:
+        """
+        Deletes a team student.
+
+        Removes related objects
+        """
+        instance = self.get_object()
+
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        # Only course teachers and team students can delete
+        authorized = is_course_teacher(user=request.user, code=code, owner_username=username) or is_team_student(
+            user=request.user, team_id=instance.team_id
+        )
+        if not authorized:
+            message = _("Only the course teachers or team members can remove a team student.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
         with transaction.atomic():
