@@ -16,6 +16,8 @@ from .views import (
     CourseDetailView,
     TeamView,
     TeamDetailView,
+    TeamStudentView,
+    TeamStudentDetailView,
     ProjectRequirementView,
     ProjectRequirementDetailView,
     CourseAttachmentView,
@@ -52,6 +54,10 @@ requirement_attachment_detail_pattern = f"{requirement_attachment_pattern}<slug:
 # Project requirement team patterns
 requirement_team_pattern = f"{requirement_detail_pattern}teams/"
 requirement_team_detail_pattern = f"{requirement_team_pattern}<str:team_name>/"
+
+# Project requirement team student patterns
+requirement_team_student_pattern = f"{requirement_team_detail_pattern}students/"
+requirement_team_student_detail_pattern = f"{requirement_team_student_pattern}<str:team_student>/"
 
 # Project requirement team project patterns
 requirement_team_project_pattern = f"{requirement_team_detail_pattern}project/"
@@ -93,6 +99,16 @@ urlpatterns = [
         requirement_team_detail_pattern,
         TeamDetailView.as_view(),
         name="teams-detail",
+    ),
+    path(
+        requirement_team_student_pattern,
+        TeamStudentView.as_view(),
+        name="team-students",
+    ),
+    path(
+        requirement_team_student_detail_pattern,
+        TeamStudentDetailView.as_view(),
+        name="team-students-detail",
     ),
     path(requirement_team_project_pattern, ProjectView.as_view(), name="project"),
     path(requirement_team_project_detail_pattern, ProjectDetailView.as_view(), name="project-detail"),
