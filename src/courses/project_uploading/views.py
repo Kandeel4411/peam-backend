@@ -3,6 +3,7 @@ import zipfile
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework import status
 from rest_flex_fields import is_expanded
 from django.db import transaction
@@ -89,6 +90,7 @@ class ProjectView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     """
 
     queryset = Project._default_manager.all()
+    parser_classes = (MultiPartParser, FormParser)
     serializer_class = ProjectSerializer
     lookup_fields = {
         "course_owner": "team__requirement__course__owner__username",
