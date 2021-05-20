@@ -2,6 +2,7 @@ import zipfile
 from typing import List
 
 from rest_framework import serializers
+from django.db.models import FileField
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.utils.translation import gettext_lazy as _
 from rest_flex_fields import FlexFieldsModelSerializer
@@ -23,10 +24,15 @@ class ProjectZipFileFieldSerializer(serializers.Serializer):
     A serializer responsible for displaying project zip file contents.
     """
 
+    files = serializers.ListField(child=serializers.CharField(), read_only=True)
+
     def validate(self, data: dict) -> dict:
         instance: serializers.FileField = self.instance
         if instance is None:
             raise NotImplementedError("This serializer must have an 'instance' to function")
+
+        assert type(instance) == FileField, "'instance' must be of type FileField"
+
         try:
             # Checking integrity of zipfile
             with zipfile.ZipFile(instance) as zfile:
@@ -44,7 +50,7 @@ class ProjectZipFileFieldSerializer(serializers.Serializer):
         Custom representation method
         """
         with zipfile.ZipFile(instance.file, "r") as zfile:
-            return zfile.namelist()  # Return list of files & directories in order
+            return {"files": zfile.namelist()}  # Return list of files & directories in order
 
 
 class ProjectSerializer(FlexFieldsModelSerializer):

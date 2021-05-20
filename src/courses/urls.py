@@ -6,7 +6,7 @@ from .invitations.views import (
     TeamInvitationView,
     TeamInvitationDetailView,
 )
-from .project_uploading.views import ProjectView, ProjectDetailView, ProjectFileView
+from .project_uploading.views import ProjectView, ProjectDetailView, ProjectFileView, ProjectFileDetailView
 from .views import (
     CourseView,
     CourseStudentView,
@@ -62,7 +62,10 @@ requirement_team_student_detail_pattern = f"{requirement_team_student_pattern}<s
 # Project requirement team project patterns
 requirement_team_project_pattern = f"{requirement_team_detail_pattern}project/"
 requirement_team_project_detail_pattern = f"{requirement_team_project_pattern}<str:project_title>/"
-requirement_team_project_file_pattern = f"{requirement_team_project_detail_pattern}files/<path:path>"
+
+# Project requirement team project file patterns
+requirement_team_project_file_pattern = f"{requirement_team_project_detail_pattern}files/"
+requirement_team_project_file_detail_pattern = f"{requirement_team_project_file_pattern}<path:path>/"
 
 # Project requirement team invitation patterns
 requirement_team_invitation_pattern = f"{requirement_team_detail_pattern}invitations/"
@@ -112,7 +115,8 @@ urlpatterns = [
     ),
     path(requirement_team_project_pattern, ProjectView.as_view(), name="project"),
     path(requirement_team_project_detail_pattern, ProjectDetailView.as_view(), name="project-detail"),
-    path(requirement_team_project_file_pattern, ProjectFileView.as_view(), name="project-file"),
+    path(requirement_team_project_file_pattern, ProjectFileView.as_view(), name="project-files"),
+    path(requirement_team_project_file_detail_pattern, ProjectFileDetailView.as_view(), name="project-files-detail"),
     path(
         requirement_team_invitation_pattern,
         TeamInvitationView.as_view(),

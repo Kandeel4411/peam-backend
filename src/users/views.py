@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from django.db import transaction
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser
+from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import status, filters
 from rest_flex_fields import is_expanded
@@ -146,7 +146,7 @@ class BaseUserAvatarView(GenericAPIView):
 
     serializer_class = AvatarSerializer
     permission_classes = (IsAuthenticated,)
-    parser_classes = (MultiPartParser,)
+    parser_classes = (MultiPartParser, FormParser)
 
     @swagger_auto_schema(request_body=AvatarSerializer(), responses={status.HTTP_200_OK: AvatarSerializer()})
     def patch(self, request, *args, **kwargs) -> Response:

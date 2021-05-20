@@ -3,6 +3,7 @@ import zipfile
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework import status
 from rest_flex_fields import is_expanded
 from django.db import transaction
@@ -14,12 +15,62 @@ from core.utils.flex_fields import get_flex_serializer_config, FlexFieldsQuerySe
 from core.utils.openapi import openapi_error_response
 from ..models import Project
 from ..utils import is_team_student, is_course_teacher, is_course_student
-from .serializers import ProjectSerializer, ProjectFileContentSerializer
+from .serializers import ProjectSerializer, ProjectFileContentSerializer, ProjectZipFileFieldSerializer
 
 
 class ProjectFileView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     """
     Base view for project files.
+    """
+
+    queryset = Project._default_manager.all()
+    serializer_class = ProjectSerializer
+    lookup_fields = {
+        "course_owner": "team__requirement__course__owner__username",
+        "course_code": "team__requirement__course__code",
+        "requirement_title": "team__requirement__title",
+        "team_name": "team__name",
+        "project_title": {"filter_kwarg": "title", "pk": True},
+    }
+
+    @swagger_auto_schema(
+        responses={
+            status.HTTP_200_OK: ProjectZipFileFieldSerializer(),
+            status.HTTP_400_BAD_REQUEST: openapi_error_response(
+                description="Request specific errors",
+                examples={"error": "Path must be valid file path in the project."},
+            ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
+            ),
+        },
+    )
+    def get(self, request, *args, **kwargs) -> Response:
+        """
+        Displays a list of the project files.
+
+        .
+        """
+        code: str = kwargs["course_code"]
+        username: str = kwargs["course_owner"]
+
+        instance: Project = self.get_object()
+
+        # Only those who belong to the course can retrieve
+        authorized: bool = is_course_teacher(
+            user=request.user, owner_username=username, code=code
+        ) or is_course_student(user=request.user, owner_username=username, code=code)
+        if not authorized:
+            message = _("User must be either a student or a teacher of the course.")
+            return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = ProjectZipFileFieldSerializer(instance=instance.project_zip)
+        return Response(serializer.data)
+
+
+class ProjectFileDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+    """
+    Base view for a specific project file.
     """
 
     queryset = Project._default_manager.all()
@@ -89,6 +140,7 @@ class ProjectView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     """
 
     queryset = Project._default_manager.all()
+    parser_classes = (MultiPartParser, FormParser)
     serializer_class = ProjectSerializer
     lookup_fields = {
         "course_owner": "team__requirement__course__owner__username",
