@@ -255,7 +255,7 @@ class Project(models.Model):
         Model level validation hook
         """
         if self.project_zip._file is not None:
-            if zipfile.is_zipfile(self.project_zip.file):
+            if not zipfile.is_zipfile(self.project_zip.file):
                 raise ValidationError({"project_zip": _('Can only upload ".zip" compressed files')})
             try:
                 # Checking integrity of zipfile
