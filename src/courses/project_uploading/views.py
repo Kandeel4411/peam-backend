@@ -18,7 +18,7 @@ from ..utils import is_team_student, is_course_teacher, is_course_student
 from .serializers import ProjectSerializer, ProjectFileContentSerializer, ProjectZipFileFieldSerializer
 
 
-class ProjectFilesView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+class ProjectFileView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     """
     Base view for project files.
     """
@@ -68,7 +68,7 @@ class ProjectFilesView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         return Response(serializer.data)
 
 
-class ProjectFilesDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
+class ProjectFileDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
     """
     Base view for a specific project file.
     """
