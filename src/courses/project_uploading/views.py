@@ -65,7 +65,7 @@ class ProjectFileView(MultipleRequiredFieldLookupMixin, GenericAPIView):
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
         serializer = ProjectZipFileFieldSerializer(instance=instance.project_zip)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ProjectFileDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
@@ -124,14 +124,14 @@ class ProjectFileDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
                 try:
                     with zpath.open("r") as f:
-                        data["content"] = str(f.read())
+                        data["content"] = f.read().decode("utf-8")
                 except KeyError:
                     return Response({"error": "Path must be a valid file path in the project."})
         except zipfile.BadZipFile:
             return Response({"error": "Unexpected error happened while trying to read project files."})
 
         serializer = ProjectFileContentSerializer(data)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class ProjectView(MultipleRequiredFieldLookupMixin, GenericAPIView):
@@ -159,6 +159,9 @@ class ProjectView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                 examples={
                     "property": "error message.",
                 },
+            ),
+            status.HTTP_403_FORBIDDEN: openapi_error_response(
+                description="Authorization specific errors", examples={"error": "message"}
             ),
         },
     )
@@ -243,13 +246,13 @@ class ProjectDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
         config = get_flex_serializer_config(request)
         serializer = self.get_serializer(instance, **config)
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         query_serializer=FlexFieldsQuerySerializer(),
         request_body=ProjectSerializer(),
         responses={
-            status.HTTP_201_CREATED: ProjectSerializer(),
+            status.HTTP_200_OK: ProjectSerializer(),
             status.HTTP_400_BAD_REQUEST: openapi_error_response(
                 description="Resource specific errors.",
                 examples={
@@ -285,7 +288,7 @@ class ProjectDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
             serializer.save()
-        return Response(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         responses={

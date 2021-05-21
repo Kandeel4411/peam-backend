@@ -41,6 +41,21 @@ Backend repository for the Peam app.
       ```
 
 - Run `poetry install` to install dependencies locally. if you are encountering an error with psycopg2 during poetry installation, ensure postgreqsql is installed (macOS: `brew install postgresql`)
+  - Clone the following dependency repos for plagiarism detection.
+
+  ```bash
+  ## In project root directory... ##
+
+  git -C src/plagiarism/vendor/ clone https://github.com/tree-sitter/tree-sitter-javascript
+  git -C src/plagiarism/vendor/ clone https://github.com/tree-sitter/tree-sitter-python
+  ```
+
+  - Run the following command to compile the cloned languages
+
+  ```bash
+  ## In project root directory... ##
+  poetry run python src/manage.py setup_plagiarism
+  ```
 
 - Incase of any code changes, make sure to run the following commands to check linting and tests before committing
 

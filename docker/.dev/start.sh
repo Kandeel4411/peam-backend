@@ -7,4 +7,5 @@ set -o nounset
 
 cd src
 python manage.py collectstatic --no-input
+python manage.py setup_plagiarism
 python manage.py runserver 0.0.0.0:8000
