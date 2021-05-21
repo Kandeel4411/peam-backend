@@ -15,4 +15,4 @@ class Command(BaseCommand):
         Language.build_library(settings.PLAG_COMPILED_LIBRARY, settings.PLAG_SUPPORTED_LANGAUGES)
 
         end_time: float = time.perf_counter() - start_time
-        self.stdout.write(self.style.SUCCESS(f"Successfully compiled libraries in  {end_time:.2}s."))
+        self.stdout.write(self.style.SUCCESS(f"Successfully compiled libraries in  {end_time:.5}s."))

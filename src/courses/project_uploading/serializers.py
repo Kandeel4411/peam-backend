@@ -38,14 +38,18 @@ class ProjectZipFileFieldSerializer(serializers.Serializer):
             with zipfile.ZipFile(instance) as zfile:
                 if zfile.testzip() is not None:
                     raise serializers.ValidationError(
-                        detail={"project_zip": _("Faulty files were found in the project files.")}
+                        detail={"project_zip": _("Faulty files were found in the project files.")}, code=500
                     )
         except zipfile.BadZipfile:
             raise serializers.ValidationError(
-                detail={"project_zip": _("An unexpected error happened when trying to open the project files.")}
+                detail={
+                    "project_zip": _("An unexpected error happened when trying to open the project files."),
+                },
+                code=500,
             )
+        return data
 
-    def to_representation(self, instance: serializers.FileField) -> List[str]:
+    def to_representation(self, instance: serializers.FileField) -> dict:
         """
         Custom representation method
         """
