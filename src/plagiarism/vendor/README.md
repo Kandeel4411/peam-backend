@@ -16,7 +16,7 @@ This directory contains the currently supported languages for plagiarism detecti
 
 - **Add language implementation path to settings**
 
-    Go to [settings/base.py](../../../../core/settings/base.py) and modify the `PLAG_SUPPORTED_LANGAUGES` variable to add the paths to the languages implementations. i.e:
+    Go to [settings/base.py](../../core/settings/base.py) and modify the `PLAG_SUPPORTED_LANGAUGES` variable to add the paths to the languages implementations. i.e:
 
     ```python
     PLAG_SUPPORTED_LANGAUGES = [
