@@ -1,4 +1,5 @@
 import zipfile
+import base64
 
 from rest_framework.generics import GenericAPIView
 from rest_framework.response import Response
@@ -124,7 +125,7 @@ class ProjectFileDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
 
                 try:
                     with zpath.open("r") as f:
-                        data["content"] = f.read().decode("utf-8")
+                        data["content"] = str(base64.b64encode(f.read()))[2:-1]
                 except KeyError:
                     return Response({"error": "Path must be a valid file path in the project."})
         except zipfile.BadZipFile:
