@@ -126,9 +126,10 @@ class ProjectFileDetailView(MultipleRequiredFieldLookupMixin, GenericAPIView):
                 try:
                     with zpath.open("r") as f:
                         try:
-                            data["content"] = f.read().decode("utf-8")
+                            content = f.read()
+                            data["content"] = content.decode("utf-8")
                         except UnicodeDecodeError:
-                            data["content"] = str(base64.b64encode(f.read()))[2:-1]
+                            data["content"] = str(base64.b64encode(content))[2:-1]
 
                 except KeyError:
                     return Response({"error": "Path must be a valid file path in the project."})
