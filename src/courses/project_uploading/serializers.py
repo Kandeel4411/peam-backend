@@ -16,7 +16,10 @@ class ProjectFileContentSerializer(serializers.Serializer):
     Custom serializer used to represent responses for project file view.
     """
 
-    content = serializers.CharField()
+    content = serializers.CharField(
+        help_text="A string representing the file content. Note: will return a "
+        "Base64 encoded string if it fails to decode"
+    )
 
 
 class ProjectZipFileFieldSerializer(serializers.Serializer):
