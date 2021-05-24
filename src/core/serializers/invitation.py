@@ -51,7 +51,7 @@ class BaseInvitationSerializer(FlexFieldsModelSerializer):
 
         # Add to students if accepted
         if invite_status == InvitationStatus.ACCEPTED:
-            self.post_accepted_hook(self, instance, validated_data)
+            self.post_accepted_hook(instance, validated_data)
 
         instance.save()
         return instance

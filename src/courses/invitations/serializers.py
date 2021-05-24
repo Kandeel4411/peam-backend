@@ -70,7 +70,7 @@ class CourseInvitationSerializer(BaseInvitationSerializer):
             },
         )
 
-    def post_accepted_hook(self, instance: Meta.model, validated_data: dict) -> Meta.model:
+    def post_accepted_hook(self, instance: Meta.model, validated_data: dict) -> None:
         user = self.context["request"].user
 
         # Adding user to either teachers or students if accepted
@@ -131,6 +131,6 @@ class TeamInvitationSerializer(BaseInvitationSerializer):
             },
         )
 
-    def post_accepted_hook(self, instance: Meta.model, validated_data: dict) -> Meta.model:
+    def post_accepted_hook(self, instance: Meta.model, validated_data: dict) -> None:
         user = self.context["request"].user
         instance.team.students.add(user)
