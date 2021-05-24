@@ -111,7 +111,7 @@ class TeamInvitationStatusRequestSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=(InvitationStatus.ACCEPTED, InvitationStatus.REJECTED), required=True)
 
 
-class TeamInvitationSerializer(FlexFieldsModelSerializer):
+class TeamInvitationSerializer(BaseInvitationSerializer):
     """
     A serializer responsible for handling team invitation instances.
 
