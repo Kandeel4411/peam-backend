@@ -16,7 +16,7 @@ from .models import (
     Team,
     TeamStudent,
 )
-
+from .locator import resolve_team_detail_url, resolve_course_detail_url
 
 User = get_user_model()
 
@@ -28,14 +28,12 @@ class TeamSerializer(FlexFieldsModelSerializer):
 
     students = serializers.SlugRelatedField(slug_field="uid", read_only=True, many=True)
     project = serializers.SlugRelatedField(slug_field="uid", read_only=True)
+    link = serializers.SerializerMethodField()
 
     class Meta:
         model = Team
-        fields = ["uid", "name", "requirement", "students", "project"]
+        fields = ["uid", "name", "requirement", "students", "project", "link"]
         read_only_fields = ["uid"]
-        extra_kwargs = {
-            "requirement": {"write_only": True},
-        }
         validators = [
             serializers.UniqueTogetherValidator(
                 queryset=Team._default_manager.all(),
@@ -43,7 +41,11 @@ class TeamSerializer(FlexFieldsModelSerializer):
                 message=_("A team with the same name already exists in the project requirement."),
             )
         ]
-        expandable_fields = {"students": (UserSerializer, {"many": True}), "project": ProjectSerializer}
+        expandable_fields = {
+            "students": (UserSerializer, {"many": True}),
+            "project": ProjectSerializer,
+            "requirement": "courses.ProjectRequirementSerializer",
+        }
 
     def validate(self, data: dict) -> dict:
         """
@@ -65,6 +67,12 @@ class TeamSerializer(FlexFieldsModelSerializer):
             # Converting Django ValidationError to DRF Serializer Validation Error
             raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
         return data
+
+    def get_link(self, instance: Meta.model) -> str:
+        """
+        Returns resolved URL for this team
+        """
+        return resolve_team_detail_url(instance=instance)
 
 
 class TeamStudentSerializer(FlexFieldsModelSerializer):
@@ -109,7 +117,7 @@ class ProjectRequirementAttachmentSerializer(FlexFieldsModelSerializer):
         model = ProjectRequirementAttachment
         fields = ["uid", "title", "requirement", "description", "link"]
         read_only_fields = ["uid"]
-        extra_kwargs = {"requirement": {"write_only": True}}
+        expandable_fields = {"requirement": "courses.ProjectRequirementSerializer"}
 
     def validate(self, data: dict) -> dict:
         """
@@ -136,7 +144,6 @@ class ProjectRequirementSerializer(FlexFieldsModelSerializer):
         model = ProjectRequirement
         fields = ["uid", "title", "course", "description", "to_dt", "from_dt", "teams", "attachments", "total_marks"]
         read_only_fields = ["uid", "teams", "attachments"]
-        extra_kwargs = {"course": {"write_only": True}}
         validators = [
             serializers.UniqueTogetherValidator(
                 queryset=ProjectRequirement._default_manager.all(),
@@ -147,6 +154,7 @@ class ProjectRequirementSerializer(FlexFieldsModelSerializer):
         expandable_fields = {
             "teams": (TeamSerializer, {"many": True}),
             "attachments": (ProjectRequirementAttachmentSerializer, {"many": True}),
+            "course": "courses.CourseSerializer",
         }
 
     def validate(self, data: dict) -> dict:
@@ -171,7 +179,7 @@ class CourseAttachmentSerializer(FlexFieldsModelSerializer):
         model = CourseAttachment
         fields = ["uid", "title", "course", "description", "link"]
         read_only_fields = ["uid"]
-        extra_kwargs = {"course": {"write_only": True}}
+        expandable_fields = {"course": "courses.CourseSerializer"}
 
     def validate(self, data: dict) -> dict:
         """
@@ -269,6 +277,7 @@ class CourseSerializer(FlexFieldsModelSerializer):
     teachers = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
     requirements = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
     attachments = serializers.SlugRelatedField(slug_field="uid", many=True, read_only=True)
+    link = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
@@ -282,6 +291,7 @@ class CourseSerializer(FlexFieldsModelSerializer):
             "teachers",
             "requirements",
             "attachments",
+            "link",
         ]
         read_only_fields = ["uid", "teachers", "students", "requirements", "attachments"]
         validators = [
@@ -310,3 +320,9 @@ class CourseSerializer(FlexFieldsModelSerializer):
             # Converting Django ValidationError to DRF Serializer Validation Error
             raise serializers.ValidationError(detail=serializers.as_serializer_error(exc))
         return data
+
+    def get_link(self, instance: Meta.model) -> str:
+        """
+        Returns resolved URL for this course
+        """
+        return resolve_course_detail_url(instance=instance)
