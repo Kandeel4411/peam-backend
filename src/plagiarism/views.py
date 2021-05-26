@@ -31,7 +31,7 @@ class ProjectPlagiarismView(APIView):
     @swagger_auto_schema(
         request_body=ProjectPlagiarismRequestSerializer(),
         responses={
-            status.HTTP_200_OK: ProjectPlagiarismResponseSerializer(),
+            status.HTTP_200_OK: ProjectPlagiarismResponseSerializer(many=True),
             status.HTTP_400_BAD_REQUEST: openapi_error_response(
                 description="Resource specific errors.",
                 examples={
@@ -69,8 +69,14 @@ class ProjectPlagiarismView(APIView):
             message = _("Only course teachers can view plagiarism")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
+        # Only look through the other projects in the same requirement
+        other_projects = (
+            Project._default_manager.exclude(uid=project_id)
+            .filter(team__requirement_id=project.team.requirement_id)
+            .all()
+        )
+
         data = []
-        other_projects = Project._default_manager.exclude(uid=project_id).all()
         with zipfile.ZipFile(project.project_zip.file, "r") as zfile:
             files = zfile.namelist()
             for _file in files:  # Looping over all possible project files
