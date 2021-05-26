@@ -10,6 +10,8 @@ linux-venv
 .env*
 Dockerfile
 docker-compose*
+*plagiarism/build/*
+*plagiarism/vendor/*
 
 # Python specific
 *.egg-info
