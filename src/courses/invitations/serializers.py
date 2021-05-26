@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.validators import UniqueValidator
 
 
-from core.serializers import BaseInvitationSerializer
+from core.invitations.serializers import BaseInvitationSerializer
 from core.constants import InvitationStatus
 from courses.models import Course, CourseInvitation, TeamStudent, TeamInvitation, CourseStudent, CourseTeacher
 from courses.constants import CourseInvitationType
