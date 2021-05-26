@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework.validators import UniqueValidator
 
 
-from core.serializers import BaseInvitationSerializer
+from core.invitations.serializers import BaseInvitationSerializer
 from core.constants import InvitationStatus
 from courses.models import Course, CourseInvitation, TeamStudent, TeamInvitation, CourseStudent, CourseTeacher
 from courses.constants import CourseInvitationType
@@ -70,7 +70,7 @@ class CourseInvitationSerializer(BaseInvitationSerializer):
             },
         )
 
-    def post_accepted_hook(self, instance: Meta.model, validated_data: dict) -> Meta.model:
+    def post_accepted_hook(self, instance: Meta.model, validated_data: dict) -> None:
         user = self.context["request"].user
 
         # Adding user to either teachers or students if accepted
@@ -111,7 +111,7 @@ class TeamInvitationStatusRequestSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=(InvitationStatus.ACCEPTED, InvitationStatus.REJECTED), required=True)
 
 
-class TeamInvitationSerializer(FlexFieldsModelSerializer):
+class TeamInvitationSerializer(BaseInvitationSerializer):
     """
     A serializer responsible for handling team invitation instances.
 
@@ -131,6 +131,6 @@ class TeamInvitationSerializer(FlexFieldsModelSerializer):
             },
         )
 
-    def post_accepted_hook(self, instance: Meta.model, validated_data: dict) -> Meta.model:
+    def post_accepted_hook(self, instance: Meta.model, validated_data: dict) -> None:
         user = self.context["request"].user
         instance.team.students.add(user)

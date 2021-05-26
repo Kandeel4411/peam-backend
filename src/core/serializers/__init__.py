@@ -1,1 +1,0 @@
-from .invitation import BaseInvitationSerializer

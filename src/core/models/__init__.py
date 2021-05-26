@@ -1,2 +1,2 @@
-from .invitation import BaseInvitation
+from .invitations import BaseInvitation
 from .notification import Notification
