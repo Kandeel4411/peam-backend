@@ -13,6 +13,7 @@ api_patterns = [
     path("api/v1/", include("plagiarism.urls")),
     path("api/v1/", include("courses.urls")),
     path("api/v1/", include("users.urls")),
+    path("api/v1/", include("core.locator.urls")),
     path("api/v1/", include("authentication.urls"), name="rest_auth"),
 ]
 
