@@ -115,6 +115,7 @@ class ProjectPlagiarismRequestSerializer(serializers.Serializer):
         max_value=1,
         default=0.3,
         required=False,
+        coerce_to_string=False,  # To disable default being a string
     )
     project = serializers.SlugRelatedField(slug_field="uid", queryset=Project._default_manager.all())
 
