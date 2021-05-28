@@ -113,6 +113,7 @@ class ProjectPlagiarismRequestSerializer(serializers.Serializer):
         decimal_places=2,
         min_value=0.3,
         max_value=1,
+        default=0.3,
         required=False,
     )
     project = serializers.SlugRelatedField(slug_field="uid", queryset=Project._default_manager.all())
@@ -142,6 +143,7 @@ class ProjectPlagiarismMatchSerializer(serializers.Serializer):
     """
 
     file = serializers.CharField(help_text="File path in the project")
+    project_title = serializers.CharField(help_text="Project title")
     project = serializers.SlugRelatedField(slug_field="uid", queryset=Project._default_manager.all())
     ratio = serializers.DecimalField(help_text="Plagiarism ratio", max_digits=3, decimal_places=2)
 
@@ -153,7 +155,6 @@ class ProjectPlagiarismResponseSerializer(serializers.Serializer):
     """
 
     file = serializers.CharField(help_text="File path in the project")
-    project = serializers.SlugRelatedField(slug_field="uid", queryset=Project._default_manager.all())
     matches = serializers.ListField(child=ProjectPlagiarismMatchSerializer(), allow_empty=True)
     failures = serializers.ListField(
         help_text="Project UIDs that plagiarism detection failed to check for some reason",

@@ -59,7 +59,7 @@ class ProjectPlagiarismView(APIView):
 
         data = request_serializer.data
         project_id = data["project"]
-        threshold = data.get("threshold", None)
+        threshold = data["threshold"]
 
         project = Project._default_manager.get(uid=project_id)
 
@@ -92,7 +92,7 @@ class ProjectPlagiarismView(APIView):
                 with fpath.open("r") as f:
                     source = f.read().decode("utf-8")
 
-                _data = {"file": _file, "project": project, "failures": [], "matches": []}
+                _data = {"file": _file, "failures": [], "matches": []}
 
                 # Looping over all the other possible projects
                 for other_project in other_projects:
@@ -121,11 +121,16 @@ class ProjectPlagiarismView(APIView):
                                     source2=other_source,
                                 )
 
-                                if threshold is not None and plag_ratio < threshold:
+                                if plag_ratio < threshold:
                                     continue
 
                                 _data["matches"].append(
-                                    {"project": other_project, "file": other_file, "ratio": plag_ratio}
+                                    {
+                                        "project": other_project,
+                                        "file": other_file,
+                                        "ratio": plag_ratio,
+                                        "project_title": other_project.title,
+                                    }
                                 )
 
                     except zipfile.BadZipfile:
