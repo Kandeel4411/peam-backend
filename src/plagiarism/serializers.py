@@ -35,6 +35,8 @@ class ProjectPlagiarismCompareRequestSerializer(serializers.Serializer):
     )
 
     def validate(self, data: dict) -> dict:
+
+        # Can't check plagiarism for the same project
         if data["first_project"].id == data["second_project"].id:
             raise serializers.ValidationError(
                 detail={
@@ -45,6 +47,8 @@ class ProjectPlagiarismCompareRequestSerializer(serializers.Serializer):
 
         first_course = data["first_project"].team.requirement.course_id
         second_course = data["second_project"].team.requirement.course_id
+
+        # Can't check plagiarism for a project in a different course
         if first_course != second_course:
             raise serializers.ValidationError(
                 detail={
@@ -54,17 +58,19 @@ class ProjectPlagiarismCompareRequestSerializer(serializers.Serializer):
             )
 
         try:
-            # Checking integrity of zipfile
+            # Checking integrity of the first project zipfile
             with zipfile.ZipFile(data["first_project"].project_zip.file) as zfile:
                 if zfile.testzip() is not None:
                     raise serializers.ValidationError(
                         detail={"first_project": _("Faulty files were found in the project files.")}, code=500
                     )
                 fpath = zipfile.Path(zfile, at=data["first_file"])
+                # Checking if given file path is an actual file path
                 if not fpath.is_file() or not fpath.exists():
                     raise serializers.ValidationError(
                         detail={"first_file": _("Please enter a valid file path in the project")}
                     )
+                # Checking if given first file extension is a supported for plagiarism
                 elif SupportedLanguages.detect_language(ext=pl.Path(data["first_file"]).suffix) is None:
                     raise serializers.ValidationError(detail={"first_file": _("This file type is not supported")})
         except zipfile.BadZipfile:
@@ -76,17 +82,19 @@ class ProjectPlagiarismCompareRequestSerializer(serializers.Serializer):
             )
 
         try:
-            # Checking integrity of zipfile
+            # Checking integrity of the second project zipfile
             with zipfile.ZipFile(data["second_project"].project_zip.file) as zfile:
                 if zfile.testzip() is not None:
                     raise serializers.ValidationError(
                         detail={"second_project": _("Faulty files were found in the project files.")}, code=500
                     )
                 fpath = zipfile.Path(zfile, at=data["second_file"])
+                # Checking if given file path is an actual file path
                 if not fpath.is_file() or not fpath.exists():
                     raise serializers.ValidationError(
                         detail={"second_file": _("Please enter a valid file path in the project")}
                     )
+                # Checking if given second file extension is a supported for plagiarism
                 elif SupportedLanguages.detect_language(ext=pl.Path(data["second_file"]).suffix) is None:
                     raise serializers.ValidationError(detail={"second_file": _("This file type is not supported")})
         except zipfile.BadZipfile:
@@ -130,7 +138,7 @@ class ProjectPlagiarismRequestSerializer(serializers.Serializer):
 
     def validate(self, data: dict) -> dict:
         try:
-            # Checking integrity of zipfile
+            # Checking integrity of the project zipfile
             with zipfile.ZipFile(data["project"].project_zip.file) as zfile:
                 if zfile.testzip() is not None:
                     raise serializers.ValidationError(
