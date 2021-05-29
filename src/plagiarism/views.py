@@ -108,6 +108,8 @@ class ProjectPlagiarismView(APIView):
 
                                 with other_fpath.open("r") as other_f:
                                     other_source = other_f.read().decode("utf-8")
+                                    if not len(other_source):
+                                        continue  # Ignore empty file
 
                                 source_tree: TreeCursor = parse_source(source=source, ext=fext)
                                 other_source_tree: TreeCursor = parse_source(source=other_source, ext=fext)
@@ -213,14 +215,16 @@ class ProjectPlagiarismCompareView(APIView):
         response["first_file"] = tokenize_source(
             source=first_source,
             marked_source=marked_first_source,
-            start_token=data["match_start_marker"],
-            end_token=data["match_end_marker"],
+            start_tokens=data["match_start_tokens"],
+            end_tokens=data["match_end_tokens"],
+            html_encoded=data["html_encoded"],
         )
         response["second_file"] = tokenize_source(
             source=second_source,
             marked_source=marked_second_source,
-            start_token=data["match_start_marker"],
-            end_token=data["match_end_marker"],
+            start_tokens=data["match_start_tokens"],
+            end_tokens=data["match_end_tokens"],
+            html_encoded=data["html_encoded"],
         )
         serializer = ProjectPlagiarismCompareResponseSerializer(response)
         return Response(serializer.data, status=status.HTTP_200_OK)

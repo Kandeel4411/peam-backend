@@ -1,4 +1,5 @@
 import difflib
+import html
 from typing import Optional, Tuple, Dict, List
 
 
@@ -94,10 +95,30 @@ def detect_plagiarism(
 
 
 def tokenize_source(
-    source: str, marked_source: str, marker: str = "@", start_token: str = "{{", end_token: str = "}}"
+    source: str,
+    marked_source: str,
+    marker: str = "@",
+    start_tokens: str = "{{",
+    end_tokens: str = "}}",
+    html_encoded: bool = False,
 ) -> str:
     """
-    Takes source code and marked source with a specific marker and returns a new tokenized source i.e:
+    Takes source code and marked source with a specific marker and returns a new tokenized source:
+
+    :source: the old source code that is unmarked
+
+    :marked_source: the edited source code that is marked (must be the same length as :source:)
+
+    :marker: the character marker that was used in marking the :marked_source:
+
+    :start_tokens: tokens that will be appended at the start of each marked slice.
+    if html encoding is enabled then start_tokens will be rendered as an unescaped html
+
+    :end_tokens: tokens that will be appended at the end of each marked slice.
+    if html encoding is enabled then end_tokens will be rendered as an unescaped html
+
+    :html_encoded: if to return the tokenized source as html escaped text'
+
     ```
     # Source
     def foo():
@@ -115,14 +136,18 @@ def tokenize_source(
     for old_ch, new_ch in zip(source, marked_source):
         if new_ch == marker and new_ch != old_ch:
             if not word_start:
-                tokenized_source += start_token
+                tokenized_source += start_tokens
                 word_start = True
         else:
             if word_start:
-                tokenized_source += end_token
+                tokenized_source += end_tokens
                 word_start = False
-        tokenized_source += old_ch
+
+        if html_encoded:
+            tokenized_source += html.escape(old_ch)
+        else:
+            tokenized_source += old_ch
 
     if word_start:
-        tokenized_source += end_token
+        tokenized_source += end_tokens
     return tokenized_source
