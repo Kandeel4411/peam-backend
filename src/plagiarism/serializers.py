@@ -18,11 +18,20 @@ class ProjectPlagiarismCompareRequestSerializer(serializers.Serializer):
     second_project = serializers.SlugRelatedField(slug_field="uid", queryset=Project._default_manager.all())
     first_file = serializers.CharField(help_text="File path in the first project")
     second_file = serializers.CharField(help_text="File  path in the second project")
-    match_start_marker = serializers.CharField(
-        required=False, default="{", help_text="Marker that will be used to mark the start of plagiarized content"
+    match_start_tokens = serializers.CharField(
+        required=False,
+        default="{",
+        help_text="tokens that will be appended at the start of each marked slice."
+        "if html encoding is enabled then the tokens will be rendered as an unescaped html",
     )
-    match_end_marker = serializers.CharField(
-        required=False, default="}", help_text="Marker that will be used to mark the end of plagiarized content"
+    match_end_tokens = serializers.CharField(
+        required=False,
+        default="}",
+        help_text="tokens that will be appended at the end of each marked slice."
+        "if html encoding is enabled then the tokens will be rendered as an unescaped html",
+    )
+    html_encoded = serializers.BooleanField(
+        required=False, default=False, help_text="If to return the file contents as html escaped text"
     )
 
     def validate(self, data: dict) -> dict:
