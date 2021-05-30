@@ -159,7 +159,7 @@ class ProjectPlagiarismView(APIView):
 
         if total_files:
             data["ratio"] = total_ratio / total_files
-        serializer = ProjectPlagiarismResponseSerializer(data, many=True)
+        serializer = ProjectPlagiarismResponseSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
