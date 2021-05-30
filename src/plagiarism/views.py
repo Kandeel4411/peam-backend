@@ -96,6 +96,8 @@ class ProjectPlagiarismView(APIView):
 
                 with fpath.open("r") as f:
                     source = f.read().decode("utf-8")
+                    if not len(source):
+                        continue  # Ignore empty file
 
                 total_files += 1
 
