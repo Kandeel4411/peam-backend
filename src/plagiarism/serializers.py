@@ -155,6 +155,7 @@ class ProjectPlagiarismRequestSerializer(serializers.Serializer):
         return data
 
 
+# ! This is mostly for swagger documentation purposes
 class ProjectPlagiarismMatchSerializer(serializers.Serializer):
     """
     Custom serialized used to represent a match instance for the project plagiarism view.
@@ -167,15 +168,30 @@ class ProjectPlagiarismMatchSerializer(serializers.Serializer):
 
 
 # ! This is mostly for swagger documentation purposes
-class ProjectPlagiarismResponseSerializer(serializers.Serializer):
+class ProjectPlagiarismFileSerializer(serializers.Serializer):
     """
-    Custom serializer used to represent responses for the project plagiarism view.
+    Custom serialized used to represent a file instance for the project plagiarism view.
     """
 
     file = serializers.CharField(help_text="File path in the project")
+    ratio = serializers.DecimalField(
+        help_text="Avg. Plagiarism ratio", max_digits=3, decimal_places=2, default=0.0, required=False
+    )
     matches = serializers.ListField(child=ProjectPlagiarismMatchSerializer(), allow_empty=True)
     failures = serializers.ListField(
         help_text="Project UIDs that plagiarism detection failed to check for some reason",
         child=serializers.SlugRelatedField(slug_field="uid", queryset=Project._default_manager.all()),
         allow_empty=True,
     )
+
+
+# ! This is mostly for swagger documentation purposes
+class ProjectPlagiarismResponseSerializer(serializers.Serializer):
+    """
+    Custom serializer used to represent responses for the project plagiarism view.
+    """
+
+    ratio = serializers.DecimalField(
+        help_text="Avg. Plagiarism ratio", max_digits=3, decimal_places=2, default=0.0, required=False
+    )
+    files = serializers.ListField(child=ProjectPlagiarismFileSerializer(), allow_empty=True)

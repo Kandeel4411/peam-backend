@@ -31,7 +31,7 @@ class ProjectPlagiarismView(APIView):
     @swagger_auto_schema(
         request_body=ProjectPlagiarismRequestSerializer(),
         responses={
-            status.HTTP_200_OK: ProjectPlagiarismResponseSerializer(many=True),
+            status.HTTP_200_OK: ProjectPlagiarismResponseSerializer(),
             status.HTTP_400_BAD_REQUEST: openapi_error_response(
                 description="Resource specific errors.",
                 examples={
@@ -76,7 +76,12 @@ class ProjectPlagiarismView(APIView):
             .all()
         )
 
-        data = []
+        data = {"files": []}
+
+        # For calculating avg ratio for files
+        total_ratio = 0
+        total_files = 0
+
         with zipfile.ZipFile(project.project_zip.file, "r") as zfile:
             files = zfile.namelist()
             for _file in files:  # Looping over all possible project files
@@ -92,7 +97,13 @@ class ProjectPlagiarismView(APIView):
                 with fpath.open("r") as f:
                     source = f.read().decode("utf-8")
 
+                total_files += 1
+
                 _data = {"file": _file, "failures": [], "matches": []}
+
+                # For calculating avg ratio for file matches
+                _total_ratio = 0
+                _total_files = 0
 
                 # Looping over all the other possible projects
                 for other_project in other_projects:
@@ -123,6 +134,9 @@ class ProjectPlagiarismView(APIView):
                                     source2=other_source,
                                 )
 
+                                _total_ratio += plag_ratio
+                                _total_files += 1
+
                                 if plag_ratio < threshold:
                                     continue
 
@@ -136,9 +150,15 @@ class ProjectPlagiarismView(APIView):
                                 )
 
                     except zipfile.BadZipfile:
-                        data["failures"].append(other_project.uid)
-                data.append(_data)
+                        _data["failures"].append(other_project.uid)
 
+                if _total_files:
+                    _data["ratio"] = _total_ratio / _total_files
+                    total_ratio += _data["ratio"]
+                data["files"].append(_data)
+
+        if total_files:
+            data["ratio"] = total_ratio / total_files
         serializer = ProjectPlagiarismResponseSerializer(data, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
