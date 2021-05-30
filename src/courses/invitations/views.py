@@ -299,10 +299,12 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         username: str = kwargs["course_owner"]
         title: str = kwargs["requirement_title"]
 
-        # Only team members can view the team invitations
-        authorized = is_team_student(user=request.user, owner_username=username, code=code, requirement_title=title)
+        # Only team members and course teachers can view the team invitations
+        authorized = is_course_teacher(user=request.user, owner_username=username, code=code) or is_team_student(
+            user=request.user, owner_username=username, code=code, requirement_title=title
+        )
         if not authorized:
-            message = _("Only team members can view the team invitations")
+            message = _("Only team members and course teachers can view the team invitations")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
         instances = self.get_queryset()
@@ -336,9 +338,11 @@ class TeamInvitationView(MultipleRequiredFieldLookupMixin, GenericAPIView):
         title: str = kwargs["requirement_title"]
 
         # Only team members can send a team invitation
-        authorized = is_team_student(user=request.user, owner_username=username, code=code, requirement_title=title)
+        authorized = is_course_teacher(user=request.user, owner_username=username, code=code) or is_team_student(
+            user=request.user, owner_username=username, code=code, requirement_title=title
+        )
         if not authorized:
-            message = _("Only team members can send a team invitation.")
+            message = _("Only team members and course teachers can send a team invitation.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
         request_serializer = TeamInvitationRequestSerializer(data=request.data)
@@ -408,10 +412,12 @@ class TeamInvitationDetailView(GenericAPIView):
         """
         instance = self.get_object()
 
-        # Only team members can view a team invitation
-        authorized = is_team_student(user=request.user, team_id=instance.team_id)
+        # Only team members and course teachers can view a team invitation
+        authorized = is_course_teacher(
+            user=request.user, course_id=instance.team.requirement.course_id
+        ) or is_team_student(user=request.user, team_id=instance.team_id)
         if not authorized:
-            message = _("Only team members can view a team invitation.")
+            message = _("Only team members and course teachers can view a team invitation.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
         config = get_flex_serializer_config(request)
@@ -434,10 +440,12 @@ class TeamInvitationDetailView(GenericAPIView):
         """
         instance = self.get_object()
 
-        # Only team members can delete a team invitation
-        authorized = is_team_student(user=request.user, team_id=instance.team_id)
+        # Only team members and course teachers can delete a team invitation
+        authorized = is_course_teacher(
+            user=request.user, course_id=instance.team.requirement.course_id
+        ) or is_team_student(user=request.user, team_id=instance.team_id)
         if not authorized:
-            message = _("Only team members can delete a team invitation.")
+            message = _("Only team members and course teachers can delete a team invitation.")
             return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
 
         instance.delete()
