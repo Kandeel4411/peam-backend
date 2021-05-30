@@ -20,7 +20,7 @@ from .serializers import (
     ProjectPlagiarismCompareResponseSerializer,
 )
 from .tokens import Token, parse_tree
-from .sources import parse_source, detect_plagiarism, tokenize_source, SupportedLanguages
+from .sources import parse_source, match_sequences, tokenize_source, SupportedLanguages, detect_plagiarism_ratio
 
 
 class ProjectPlagiarismView(APIView):
@@ -122,17 +122,7 @@ class ProjectPlagiarismView(APIView):
                                     if not len(other_source):
                                         continue  # Ignore empty file
 
-                                source_tree: TreeCursor = parse_source(source=source, ext=fext)
-                                other_source_tree: TreeCursor = parse_source(source=other_source, ext=fext)
-
-                                source_parse: list[Token] = parse_tree(source_tree.walk(), child_only=False)
-                                other_source_parse: list[Token] = parse_tree(other_source_tree.walk(), child_only=False)
-                                _throwaway, _throwaway2, plag_ratio = detect_plagiarism(
-                                    tokens1=source_parse,
-                                    tokens2=other_source_parse,
-                                    source1=source,
-                                    source2=other_source,
-                                )
+                                plag_ratio = detect_plagiarism_ratio(source1=source, source2=other_source, ext=fext)
 
                                 _total_ratio += plag_ratio
                                 _total_files += 1
@@ -224,7 +214,7 @@ class ProjectPlagiarismCompareView(APIView):
 
         first_parse: list[Token] = parse_tree(first_tree.walk(), child_only=False)
         second_parse: list[Token] = parse_tree(second_tree.walk(), child_only=False)
-        marked_first_source, marked_second_source, ratio = detect_plagiarism(
+        marked_first_source, marked_second_source, ratio = match_sequences(
             tokens1=first_parse,
             tokens2=second_parse,
             source1=first_source,
