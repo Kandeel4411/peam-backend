@@ -124,11 +124,11 @@ class ProjectPlagiarismView(APIView):
 
                                 plag_ratio = detect_plagiarism_ratio(source1=source, source2=other_source, ext=fext)
 
-                                _total_ratio += plag_ratio
-                                _total_files += 1
-
                                 if plag_ratio < threshold:
                                     continue
+
+                                _total_ratio += plag_ratio
+                                _total_files += 1
 
                                 _data["matches"].append(
                                     {
@@ -145,7 +145,7 @@ class ProjectPlagiarismView(APIView):
                 if _total_files:
                     _data["ratio"] = _total_ratio / _total_files
                     total_ratio += _data["ratio"]
-                data["files"].append(_data)
+                    data["files"].append(_data)
 
         if total_files:
             data["ratio"] = total_ratio / total_files
