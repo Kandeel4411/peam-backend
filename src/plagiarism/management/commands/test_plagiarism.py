@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand, CommandError
 from tree_sitter import Language, Parser, Tree
 
 from plagiarism.tokens import Token, parse_tree
-from plagiarism.sources import parse_source, detect_plagiarism, tokenize_source
+from plagiarism.sources import parse_source, match_sequences, tokenize_source
 
 
 class Command(BaseCommand):
@@ -53,7 +53,7 @@ class Command(BaseCommand):
         print("_________________________________\n")
 
         # Detect plagiarism between two list of tokens and mark similarity in source code
-        marked_first_source, marked_second_source, plag_ratio = detect_plagiarism(
+        marked_first_source, marked_second_source, plag_ratio = match_sequences(
             tokens1=first_parse, tokens2=second_parse, source1=first_source, source2=second_source
         )
         print(

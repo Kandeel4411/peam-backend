@@ -4,9 +4,9 @@ from typing import Optional, Tuple, Dict, List
 
 
 from django.conf import settings
-from tree_sitter import Language, Parser, Tree
+from tree_sitter import Language, Parser, Tree, TreeCursor
 
-from .tokens import Token
+from .tokens import Token, parse_tree
 
 
 class SupportedLanguages:
@@ -55,7 +55,25 @@ def parse_source(source: str, ext: str) -> Optional[Tree]:
     return tree
 
 
-def detect_plagiarism(
+def detect_plagiarism_ratio(source1: str, source2: str, ext: str) -> float:
+    """
+    Takes 2 sources codes and detects possible plagiarism by matching sequences and returns plagiarism ratio.
+    """
+    source_tree: TreeCursor = parse_source(source=source1, ext=ext)
+    other_source_tree: TreeCursor = parse_source(source=source2, ext=ext)
+
+    source_parse: list[Token] = parse_tree(source_tree.walk(), child_only=False)
+    other_source_parse: list[Token] = parse_tree(other_source_tree.walk(), child_only=False)
+    _, _, plag_ratio = match_sequences(
+        tokens1=source_parse,
+        tokens2=other_source_parse,
+        source1=source1,
+        source2=source2,
+    )
+    return plag_ratio
+
+
+def match_sequences(
     tokens1: List[Token], tokens2: List[Token], source1: str, source2: str, marker: str = "@"
 ) -> Tuple[str, str, float]:
     """
@@ -144,7 +162,13 @@ def tokenize_source(
                 word_start = False
 
         if html_encoded:
-            tokenized_source += html.escape(old_ch)
+            # This handles the case for if html tags were given they need to be closed before end of line
+            if old_ch == "\n" and word_start:
+                tokenized_source += end_tokens
+                tokenized_source += html.escape(old_ch)
+                tokenized_source += start_tokens
+            else:
+                tokenized_source += html.escape(old_ch)
         else:
             tokenized_source += old_ch
 

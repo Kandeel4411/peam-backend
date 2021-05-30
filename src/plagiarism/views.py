@@ -20,7 +20,7 @@ from .serializers import (
     ProjectPlagiarismCompareResponseSerializer,
 )
 from .tokens import Token, parse_tree
-from .sources import parse_source, detect_plagiarism, tokenize_source, SupportedLanguages
+from .sources import parse_source, match_sequences, tokenize_source, SupportedLanguages, detect_plagiarism_ratio
 
 
 class ProjectPlagiarismView(APIView):
@@ -31,7 +31,7 @@ class ProjectPlagiarismView(APIView):
     @swagger_auto_schema(
         request_body=ProjectPlagiarismRequestSerializer(),
         responses={
-            status.HTTP_200_OK: ProjectPlagiarismResponseSerializer(many=True),
+            status.HTTP_200_OK: ProjectPlagiarismResponseSerializer(),
             status.HTTP_400_BAD_REQUEST: openapi_error_response(
                 description="Resource specific errors.",
                 examples={
@@ -76,7 +76,12 @@ class ProjectPlagiarismView(APIView):
             .all()
         )
 
-        data = []
+        data = {"files": []}
+
+        # For calculating avg ratio for files
+        total_ratio = 0
+        total_files = 0
+
         with zipfile.ZipFile(project.project_zip.file, "r") as zfile:
             files = zfile.namelist()
             for _file in files:  # Looping over all possible project files
@@ -91,8 +96,16 @@ class ProjectPlagiarismView(APIView):
 
                 with fpath.open("r") as f:
                     source = f.read().decode("utf-8")
+                    if not len(source):
+                        continue  # Ignore empty file
+
+                total_files += 1
 
                 _data = {"file": _file, "failures": [], "matches": []}
+
+                # For calculating avg ratio for file matches
+                _total_ratio = 0
+                _total_files = 0
 
                 # Looping over all the other possible projects
                 for other_project in other_projects:
@@ -111,20 +124,13 @@ class ProjectPlagiarismView(APIView):
                                     if not len(other_source):
                                         continue  # Ignore empty file
 
-                                source_tree: TreeCursor = parse_source(source=source, ext=fext)
-                                other_source_tree: TreeCursor = parse_source(source=other_source, ext=fext)
-
-                                source_parse: list[Token] = parse_tree(source_tree.walk(), child_only=False)
-                                other_source_parse: list[Token] = parse_tree(other_source_tree.walk(), child_only=False)
-                                _throwaway, _throwaway2, plag_ratio = detect_plagiarism(
-                                    tokens1=source_parse,
-                                    tokens2=other_source_parse,
-                                    source1=source,
-                                    source2=other_source,
-                                )
+                                plag_ratio = detect_plagiarism_ratio(source1=source, source2=other_source, ext=fext)
 
                                 if plag_ratio < threshold:
                                     continue
+
+                                _total_ratio += plag_ratio
+                                _total_files += 1
 
                                 _data["matches"].append(
                                     {
@@ -136,10 +142,16 @@ class ProjectPlagiarismView(APIView):
                                 )
 
                     except zipfile.BadZipfile:
-                        data["failures"].append(other_project.uid)
-                data.append(_data)
+                        _data["failures"].append(other_project.uid)
 
-        serializer = ProjectPlagiarismResponseSerializer(data, many=True)
+                if _total_files:
+                    _data["ratio"] = _total_ratio / _total_files
+                    total_ratio += _data["ratio"]
+                    data["files"].append(_data)
+
+        if total_files:
+            data["ratio"] = total_ratio / total_files
+        serializer = ProjectPlagiarismResponseSerializer(data)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -204,7 +216,7 @@ class ProjectPlagiarismCompareView(APIView):
 
         first_parse: list[Token] = parse_tree(first_tree.walk(), child_only=False)
         second_parse: list[Token] = parse_tree(second_tree.walk(), child_only=False)
-        marked_first_source, marked_second_source, ratio = detect_plagiarism(
+        marked_first_source, marked_second_source, ratio = match_sequences(
             tokens1=first_parse,
             tokens2=second_parse,
             source1=first_source,
