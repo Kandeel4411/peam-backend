@@ -82,6 +82,13 @@ If developing locally, you need to create a `.env.dev` file similar to [.env.dev
 # Run migrate to create db / apply migrations
 poetry run python src/manage.py migrate
 
+# Create a new admin user
+poetry run python src/manage.py create_admin_user \
+    --noinput \
+    --username admin \
+    --password admin \
+    --email admin@hotmail.com
+
 # Run local development server
 poetry run python src/manage.py runserver
 
@@ -95,7 +102,7 @@ poetry run flake8 src
 
 ```
 
-if you want to be able to reload server on any code changes without having to run `make build` everytime then you could change the [Makefile](Makefile)'s `COMPOSE_FILE` variable to the following instead:
+if you want to be able to reload server on any code changes without having to run `make build` every time then you could change the [Makefile](Makefile)'s `COMPOSE_FILE` variable to the following instead:
 
 ```bash
 COMPOSE_FILE := "docker-compose.dev.yml"

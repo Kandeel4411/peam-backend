@@ -38,7 +38,7 @@ FROM base as dependencies
 RUN apt-get install -y --no-install-recommends libpq-dev gcc python3-dev
 
 # tree-sitter building requirements
-RUN apt-get install -y --no-install-recommends git
+RUN apt-get install -y --no-install-recommends git build-essential
 # Cloning supported languages
 RUN git clone https://github.com/tree-sitter/tree-sitter-javascript
 RUN git clone https://github.com/tree-sitter/tree-sitter-python
@@ -60,6 +60,11 @@ RUN poetry config virtualenvs.create false \
     && poetry export -f requirements.txt \
     | pip install -r /dev/stdin  \
     && poetry debug
+
+# Building tree-sitter languages
+COPY docker/scripts/setup_plagiarism.py  ./
+RUN python setup_plagiarism.py
+
 
 
 #############################################
@@ -91,16 +96,14 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 EXPOSE 8000
 WORKDIR /app
-COPY . /app
+COPY --chown=newuser:django . /app
 
 # copy cloned languages
-COPY --from=dev-dependencies /tree-sitter-javascript src/plagiarism/vendor/tree-sitter-javascript
-COPY --from=dev-dependencies /tree-sitter-python src/plagiarism/vendor/tree-sitter-python
+COPY --chown=newuser:django --from=dev-dependencies /build  src/plagiarism/build/
 
 RUN chmod +x docker/entrypoint.sh
 RUN chmod +x docker/.dev/start.sh
 
-RUN chown -R newuser:django /app
 USER newuser
 
 ENTRYPOINT ["./docker/entrypoint.sh"]
@@ -125,16 +128,14 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 EXPOSE 8000
 WORKDIR /app
-COPY . /app
+COPY --chown=newuser:django . /app
 
 # copy cloned languages
-COPY --from=dependencies /tree-sitter-javascript src/plagiarism/vendor/tree-sitter-javascript
-COPY --from=dependencies /tree-sitter-python src/plagiarism/vendor/tree-sitter-python
+COPY --chown=newuser:django --from=dependencies /build  src/plagiarism/build/
 
 RUN chmod +x docker/entrypoint.sh
 RUN chmod +x docker/.prod/start.sh
 
-RUN chown -R newuser:django /app
 USER newuser
 
 ENTRYPOINT ["./docker/entrypoint.sh"]

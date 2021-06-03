@@ -3,6 +3,8 @@ version: "3"
 volumes:
   local_postgres_data:
     external: false
+  media:
+    external: false
 
 services:
   peam_backend:
@@ -23,6 +25,8 @@ services:
       - POSTGRES_DB=peam_backend
       - POSTGRES_USER=username
       - POSTGRES_PASSWORD=password
+    volumes:
+      - media:/app/media
 
   postgres:
     image: postgres:12.3

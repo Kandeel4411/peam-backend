@@ -20,9 +20,9 @@ This directory contains the currently supported languages for plagiarism detecti
 
     ```python
     PLAG_SUPPORTED_LANGAUGES = [
-        "src/plagiarism/vendor/tree-sitter-javascript",
-        "src/plagiarism/vendor/tree-sitter-python",
-        # Add paths here ...
+        str(APPS_DIR / "plagiarism/vendor/tree-sitter-javascript"),
+        str(APPS_DIR / "plagiarism/vendor/tree-sitter-python"),
+        # Add paths here...
     ]
     ```
 
@@ -53,17 +53,16 @@ This directory contains the currently supported languages for plagiarism detecti
   RUN git clone https://github.com/tree-sitter/tree-sitter-javascript
   RUN git clone https://github.com/tree-sitter/tree-sitter-python
 
-  ## Under the `dev` stage ##
-  # ----------------------- #
-  # Go to `copy cloned languages` section and add
-  COPY --from=dev-dependencies /tree-sitter-javascript src/plagiarism/vendor/tree-sitter-javascript
-  COPY --from=dev-dependencies /tree-sitter-python src/plagiarism/vendor/tree-sitter-python
+- **Modify `setup_plagiarism.py` script**
 
-  ## Under the `prod` stage ##
-  # ------------------------ #
-  # Go to `copy cloned languages` section and add
-  COPY --from=dependencies /tree-sitter-javascript src/plagiarism/vendor/tree-sitter-javascript
-  COPY --from=dependencies /tree-sitter-python src/plagiarism/vendor/tree-sitter-python
+  Go to [docker/scripts/setup_plagiarism.py](../../../docker/scripts/setup_plagiarism.py) and add the language implementations. i.e:
+
+  ```python
+  Language.build_library("build/languages.so", [
+      "tree-sitter-python",
+      "tree-sitter-javascript",
+      # Add language here
+  ])
   ```
 
 - **Build the languages library**
