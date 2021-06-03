@@ -94,7 +94,7 @@ class ProjectPlagiarismView(APIView):
                 elif not SupportedLanguages.detect_language(ext=fext):
                     continue
 
-                with fpath.open("rb") as f:
+                with fpath.open("r") as f:
                     source = f.read().decode("utf-8")
                     if not len(source):
                         continue  # Ignore empty file
@@ -119,7 +119,7 @@ class ProjectPlagiarismView(APIView):
                                 elif fext != pl.Path(other_file).suffix:
                                     continue
 
-                                with other_fpath.open("rb") as other_f:
+                                with other_fpath.open("r") as other_f:
                                     other_source = other_f.read().decode("utf-8")
                                     if not len(other_source):
                                         continue  # Ignore empty file
