@@ -141,8 +141,8 @@ class ProjectPlagiarismView(APIView):
                                     }
                                 )
 
-                    except zipfile.BadZipfile:
-                        _data["failures"].append(other_project.uid)
+                    except (zipfile.BadZipfile, FileNotFoundError):
+                        _data["failures"].append(other_project)
 
                 if _total_files:
                     _data["ratio"] = _total_ratio / _total_files
