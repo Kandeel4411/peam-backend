@@ -59,9 +59,9 @@ target/
 # DotEnv configuration
 .env
 .env.prod
+.env.prod.postgres
 .env.local.prod
 .env.local.dev
-.env.*.postgres
 
 # Database
 *.db
