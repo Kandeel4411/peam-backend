@@ -19,7 +19,9 @@ services:
     command: ./docker/.dev/start.sh
     environment:
       - DJANGO_SETTINGS_MODULE=core.settings.dev
-      - DJANGO_DEBUG=True
+      - DJANGO_SITE_DOMAIN=localhost:8000
+      - DJANGO_SITE_DISPLAY=localhost
+      - DJANGO_DEBUG=false
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_DB=peam_backend
