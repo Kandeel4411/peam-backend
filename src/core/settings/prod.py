@@ -1,14 +1,14 @@
 from pathlib import Path
-from datetime import timedelta
+import environ
 
-from .base import *  # noqa
-from .base import env
-
+env = environ.Env()
 ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent.parent.parent
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=True)
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
-    env.read_env(str(ROOT_DIR / ".env.prod"))
+    env.read_env(str(ROOT_DIR / ".env.local.prod"))
+
+from .base import *  # noqa
 
 DEBUG = env.bool("DJANGO_DEBUG", False)
 SECRET_KEY = env("DJANGO_SECRET_KEY")
@@ -17,17 +17,11 @@ ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["0.0.0.0", "localhost"
 
 # django-cors-headers
 # ------------------------------------------------------------------------------
-CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = env.bool("DJANGO_CORS_ALLOW_ALL_ORIGINS", default=False)
+CORS_ORIGIN_WHITELIST = env.list("DJANGO_CORS_ORIGIN_WHITELIST", default=["https://localhost", "https://127.0.0.1"])
 
 # AUTHENTICATION
 # ------------------------------------------------------------------------------
-AUTHENTICATION_BACKENDS = [
-    # allauth specific authentication methods, such as login by e-mail
-    "allauth.account.auth_backends.AuthenticationBackend",
-    # Needed to login by username in Django admin, regardless of allauth
-    "django.contrib.auth.backends.ModelBackend",
-]
-
 AUTH_USER_MODEL = "users.User"
 
 LOGIN_REDIRECT_URL = "/"
@@ -35,55 +29,23 @@ LOGIN_URL = "/api/auth/login"
 
 # dj-rest-auth
 # ------------------------------------------------------------------------------
-REST_USE_JWT = True
-REST_SESSION_LOGIN = False
-JWT_AUTH_COOKIE = "jwt-auth"
-JWT_AUTH_SECURE = True
-JWT_AUTH_HTTPONLY = True
-JWT_AUTH_SAMESITE = "Lax"
+JWT_AUTH_SECURE = env.bool("DJANGO_JWT_AUTH_SECURE", default=True)
 
 # django-allauth
 # ------------------------------------------------------------------------------
-ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 8
-ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 300
-ACCOUNT_AUTHENTICATION_METHOD = "username_email"
+ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 6
 
-ACCOUNT_CONFIRM_EMAIL_ON_GET = True
-ACCOUNT_EMAIL_CONFIRMATION_AUTHENTICATED_REDIRECT_URL = None
-ACCOUNT_EMAIL_CONFIRMATION_EXPIRE_DAYS = 1
-ACCOUNT_EMAIL_CONFIRMATION_HMAC = True
-
-ACCOUNT_USER_MODEL_EMAIL_FIELD = "email"
-ACCOUNT_USER_MODEL_USERNAME_FIELD = "username"
-ACCOUNT_USERNAME_REQUIRED = True
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_UNIQUE_EMAIL = True
-ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-ACCOUNT_MAX_EMAIL_ADDRESSES = 1  # User wont be able to change his email
-
-ACCOUNT_LOGOUT_ON_PASSWORD_CHANGE = True
-ACCOUNT_LOGIN_ON_PASSWORD_RESET = False
-
-ACCOUNT_PRESERVE_USERNAME_CASING = True
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https"
 
 # djangorestframework-simplejwt
 # ------------------------------------------------------------------------------
-SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=10),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
-    "ROTATE_REFRESH_TOKENS": False,
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": env("JWT_KEY"),
-    "AUTH_HEARDER_TYPES": ("Bearer",),
-    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
-    "AUDIENCE": None,
-    "ISSUER": None,
-    "USER_ID_FIELD": "uid",
-    "USER_ID_CLAIM": "user_id",
-    "JTI_CLAIM": "jwt_id",
-    "TOKEN_TYPE_CLAIM": "jwt_type",
-    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
-}
+SIMPLE_JWT.update(  # noqa
+    {
+        "ALGORITHM": "RS256",
+        "SIGNING_KEY": env("DJANGO_JWT_KEY"),
+        "VERIFYING_KEY": env("DJANGO_JWT_VERIFY_KEY"),
+    }
+)
 
 # django-rest-framework
 # -------------------------------------------------------------------------------
@@ -92,24 +54,17 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
 }
 
+# Swagger Settings
+# ------------------------------------------------------------------------------
+SWAGGER_SETTINGS.update({"SERVE_PUBLIC": env("DJANGO_SWAGGER_SERVE_PUBLIC", default=False)})  # noqa
+
 # DATABASES
 # ------------------------------------------------------------------------------
 DATABASES = {"default": {**env.db("DATABASE_URL"), "CONN_MAX_AGE": env.int("CONN_MAX_AGE", default=60)}}
 
 # CACHES
 # ------------------------------------------------------------------------------
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": env("REDIS_URL"),
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-            # Mimicing memcache behavior.
-            # https://github.com/jazzband/django-redis#memcached-exceptions-behavior
-            "IGNORE_EXCEPTIONS": True,
-        },
-    }
-}
+CACHES = {"default": env.cache("CACHE_URL", default="locmemcache://")}
 
 # SECURITY
 # ------------------------------------------------------------------------------
@@ -121,23 +76,10 @@ SECURE_SSL_REDIRECT = env.bool("DJANGO_SECURE_SSL_REDIRECT", default=True)
 SESSION_COOKIE_SECURE = True
 # https://docs.djangoproject.com/en/dev/ref/settings/#csrf-cookie-secure
 CSRF_COOKIE_SECURE = True
-# https://docs.djangoproject.com/en/dev/topics/security/#ssl-https
-# https://docs.djangoproject.com/en/dev/ref/settings/#secure-hsts-seconds
-# TODO: set this to 60 seconds first and then to 518400 once you prove the former works
-SECURE_HSTS_SECONDS = 60
-# https://docs.djangoproject.com/en/dev/ref/settings/#secure-hsts-include-subdomains
-SECURE_HSTS_INCLUDE_SUBDOMAINS = env.bool("DJANGO_SECURE_HSTS_INCLUDE_SUBDOMAINS", default=True)
-# https://docs.djangoproject.com/en/dev/ref/settings/#secure-hsts-preload
-SECURE_HSTS_PRELOAD = env.bool("DJANGO_SECURE_HSTS_PRELOAD", default=True)
-# https://docs.djangoproject.com/en/dev/ref/middleware/#x-content-type-options-nosniff
-SECURE_CONTENT_TYPE_NOSNIFF = env.bool("DJANGO_SECURE_CONTENT_TYPE_NOSNIFF", default=True)
 
 # STATIC
 # ------------------------
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
-
-# MEDIA
-# ------------------------------------------------------------------------------
 
 # TEMPLATES
 # ------------------------------------------------------------------------------
@@ -153,9 +95,17 @@ TEMPLATES[-1]["OPTIONS"]["loaders"] = [  # type: ignore[index] # noqa F405
 
 # EMAIL
 # ------------------------------------------------------------------------------
-DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="peam-backend <noreply@example.com>")
+DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL")
 SERVER_EMAIL = env("DJANGO_SERVER_EMAIL", default=DEFAULT_FROM_EMAIL)
-EMAIL_SUBJECT_PREFIX = env("DJANGO_EMAIL_SUBJECT_PREFIX", default="[peam-backend]")
+EMAIL_SUBJECT_PREFIX = env("DJANGO_EMAIL_SUBJECT_PREFIX", default="")
+
+if env("DJANGO_EMAIL_BACKEND", default="") != "django.core.mail.backends.console.EmailBackend":
+    EMAIL_HOST = env("DJANGO_EMAIL_HOST")
+    EMAIL_PORT = env("DJANGO_EMAIL_PORT", default=465)
+    EMAIL_USE_SSL = env.bool("DJANGO_EMAIL_USE_SSL", default=True)
+    EMAIL_USE_TLS = env.bool("DJANGO_EMAIL_USE_TLS", default=False)
+    EMAIL_HOST_USER = env.str("DJANGO_EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = env.str("DJANGO_EMAIL_HOST_PASSWORD")
 
 # ADMIN
 # ------------------------------------------------------------------------------

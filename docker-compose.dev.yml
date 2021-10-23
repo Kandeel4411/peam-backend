@@ -17,17 +17,13 @@ services:
     command: ./docker/.dev/start.sh
     ports:
       - 8000:8000
-    environment:
-      - DJANGO_SETTINGS_MODULE=core.settings.dev
-      - DJANGO_DEBUG=True
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_DB=peam_backend
-      - POSTGRES_USER=username
-      - POSTGRES_PASSWORD=password
+    env_file:
+      - ./docker/.dev/.env.dev
     volumes:
       - .:/app
       - media:/app/media
+    depends_on:
+      - postgres
 
   postgres:
     image: postgres:12.3
@@ -36,7 +32,5 @@ services:
       - "127.0.0.1:5243:5432"
     volumes:
       - local_postgres_data:/var/lib/postgresql/data:Z
-    environment:
-      - POSTGRES_DB=peam_backend
-      - POSTGRES_USER=username
-      - POSTGRES_PASSWORD=password
+    env_file:
+      - ./docker/.dev/.env.dev.postgres

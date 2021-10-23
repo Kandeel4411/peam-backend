@@ -1,4 +1,4 @@
-COMPOSE_FILE := "docker-compose.ci.yml"
+COMPOSE_FILE := "docker-compose.dev.yml"
 COMPOSE_CONTAINER_NAME := "peam_backend"
 
 POSTGRES_COMPOSE_VOLUME := "peam-backend_local_postgres_data"
@@ -76,3 +76,16 @@ create-admin-user:
 
 .PHONY: create-db
 create-db: stop prune db migrate
+
+.PHONY: local-create-db
+local-create-db: stop prune db
+	echo "Waiting for db..."
+	sleep 5
+	python src/manage.py makemigrations
+	python src/manage.py migrate
+	python src/manage.py setup_site
+	python src/manage.py create_admin_user \
+	--noinput \
+	--username admin \
+	--password admin \
+	--email admin@hotmail.com

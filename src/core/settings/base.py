@@ -78,6 +78,8 @@ LOGIN_URL = "/api/auth/login"
 
 # PEAM BACKEND
 # ------------------------------------------------------------------------------
+SITE_DOMAIN = env.str("DJANGO_SITE_DOMAIN", default="localhost:8000")
+SITE_DISPLAY = env.str("DJANGO_SITE_DISPLAY", default="localhost")
 
 # django path url patterns
 FRONTEND_EMAIL_CONFIRMATION_URL = "signup/email/verify/<str:key>/"
@@ -117,7 +119,7 @@ REST_AUTH_REGISTER_SERIALIZERS = {"REGISTER_SERIALIZER": "authentication.seriali
 
 # django-allauth
 # ------------------------------------------------------------------------------
-ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 4
+ACCOUNT_LOGIN_ATTEMPTS_LIMIT = 8
 ACCOUNT_LOGIN_ATTEMPTS_TIMEOUT = 300
 ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 

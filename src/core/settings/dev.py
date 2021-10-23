@@ -1,16 +1,16 @@
 from pathlib import Path
-from datetime import timedelta
+import environ
 
-from .base import *  # noqa
-from .base import env
-
+env = environ.Env()
 ROOT_DIR = Path(__file__).resolve(strict=True).parent.parent.parent.parent
 READ_DOT_ENV_FILE = env.bool("DJANGO_READ_DOT_ENV_FILE", default=True)
 if READ_DOT_ENV_FILE:
     # OS environment variables take precedence over variables from .env
-    env.read_env(str(ROOT_DIR / ".env.dev"))
+    env.read_env(str(ROOT_DIR / ".env.local.dev"))
 
-DEBUG = True
+from .base import *  # noqa
+
+DEBUG = env.bool("DJANGO_DEBUG", True)
 SECRET_KEY = env(
     "DJANGO_SECRET_KEY",
     default="6PYoIucrBDY9VRXvcVQNkaBs1SONtVXSnyrTIs949YthW18tjBCjXwUfycItgY0F",

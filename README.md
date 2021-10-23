@@ -89,6 +89,9 @@ poetry run python src/manage.py create_admin_user \
     --password admin \
     --email admin@hotmail.com
 
+# Setup site domain and display
+poetry run python src/manage.py setup_site
+
 # Run local development server
 poetry run python src/manage.py runserver
 
@@ -102,8 +105,10 @@ poetry run flake8 src
 
 ```
 
-if you want to be able to reload server on any code changes without having to run `make build` every time then you could change the [Makefile](Makefile)'s `COMPOSE_FILE` variable to the following instead:
+if you want to be able to reload server on any code changes without having to run `make build` every time thenyou could change the [docker-compose.dev.yml](docker-compose.dev.yml)'s `volume` section to the following instead:
 
-```bash
-COMPOSE_FILE := "docker-compose.dev.yml"
+```yaml
+  volumes:
+    # - .:/app       # Uncomment this line
+    ...
 ```
