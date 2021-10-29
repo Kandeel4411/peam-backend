@@ -74,7 +74,7 @@ Backend repository for the Peam app.
 
 ## Notes
 
-If developing locally, you need to create a `.env.dev` file similar to [.env.dev.example](.env.dev.example) and overriding the default values appropriately.
+If developing locally, you need to create a `.env.local.dev` file similar to [.env.local.dev.example](.env.local.dev.example) and overriding the default values appropriately.
 
 ```bash
 ## In project root directory... ##
