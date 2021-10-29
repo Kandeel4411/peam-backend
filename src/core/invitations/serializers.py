@@ -1,3 +1,5 @@
+import copy
+
 from rest_flex_fields import FlexFieldsModelSerializer
 from django.utils.translation import gettext_lazy as _
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -28,7 +30,9 @@ class BaseInvitationSerializer(FlexFieldsModelSerializer):
         """
         try:
             if self.instance is not None:  # An instance already exists
-                instance = self.instance
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
             else:
                 sender = self.context["request"].user
                 instance = self.Meta.model(**data, sender=sender)

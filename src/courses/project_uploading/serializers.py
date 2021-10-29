@@ -1,3 +1,4 @@
+import copy
 import zipfile
 from typing import List
 
@@ -75,8 +76,13 @@ class ProjectSerializer(FlexFieldsModelSerializer):
         """
         Custom validation method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
