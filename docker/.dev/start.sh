@@ -6,5 +6,9 @@ set -o nounset
 
 
 cd src
-python manage.py collectstatic --no-input
+echo "Applying database migrations..."
+python manage.py migrate
+echo "Configuring site domain..."
+python manage.py setup_site
+echo "Running..."
 python manage.py runserver 0.0.0.0:8000
