@@ -18,9 +18,9 @@ Backend repository for the Peam app.
 
 - [Install Make](http://gnuwin32.sourceforge.net/packages/make.htm) if you're on Windows. OSX already has it installed. Linux will tell you how to install it (i.e., `sudo apt-get install make`)
 - Run `make build`
-- Run `make create-db`
 - Run `make run`
 - Navigate to [http://localhost:8000/](http://localhost:8000/) to view the API documentation.
+- **Optional**: Create a default `admin` user account by running `make create-admin-user` for the django admin panel.
 
 ## Development
 
