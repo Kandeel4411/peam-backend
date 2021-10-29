@@ -1,3 +1,5 @@
+import copy
+
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError as DjangoValidationError
@@ -53,13 +55,16 @@ class TeamSerializer(FlexFieldsModelSerializer):
         """
         try:
             if self.instance is not None:  # An instance already exists
-                instance = self.instance
+                instance: self.Meta.model = copy.deepcopy(self.instance)
 
                 # Updating requirement is meaningless but is subject to change
                 if "requirement" in data:
                     raise serializers.ValidationError(
                         detail={"requirement": _("Can't change a team to a different requirement")}
                     )
+
+                for key, value in data.items():
+                    setattr(instance, key, value)
             else:
                 instance = self.Meta.model(**data)
             instance.full_clean()
@@ -99,8 +104,13 @@ class TeamStudentSerializer(FlexFieldsModelSerializer):
         """
         Custom validation method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
@@ -123,8 +133,13 @@ class ProjectRequirementAttachmentSerializer(FlexFieldsModelSerializer):
         """
         Custom validate method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
@@ -161,8 +176,13 @@ class ProjectRequirementSerializer(FlexFieldsModelSerializer):
         """
         Custom validate method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
@@ -185,8 +205,13 @@ class CourseAttachmentSerializer(FlexFieldsModelSerializer):
         """
         Custom validate method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
@@ -218,8 +243,13 @@ class CourseStudentSerializer(FlexFieldsModelSerializer):
         """
         Custom validate method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
@@ -250,8 +280,13 @@ class CourseTeacherSerializer(FlexFieldsModelSerializer):
         """
         Custom validate method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
@@ -313,8 +348,13 @@ class CourseSerializer(FlexFieldsModelSerializer):
         """
         Custom validate method
         """
-        instance = self.Meta.model(**data) if self.instance is None else self.instance
         try:
+            if self.instance is not None:  # An instance already exists
+                instance: self.Meta.model = copy.deepcopy(self.instance)
+                for key, value in data.items():
+                    setattr(instance, key, value)
+            else:
+                instance = self.Meta.model(**data)
             instance.full_clean()
         except DjangoValidationError as exc:
             # Converting Django ValidationError to DRF Serializer Validation Error
