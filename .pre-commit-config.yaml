@@ -11,13 +11,13 @@ repos:
       - id: check-yaml
 
   - repo: https://github.com/psf/black
-    rev: 20.8b1
+    rev: 23.3.0
     hooks:
       - id: black
         args: ['src']
 
-  - repo: https://gitlab.com/pycqa/flake8
-    rev: 3.8.4
+  - repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
     hooks:
       - id: flake8
         args: ['src', '--config=setup.cfg']

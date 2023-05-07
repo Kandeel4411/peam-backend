@@ -50,16 +50,14 @@ RUN python3 -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH="/opt/venv/bin:$PATH"
 
-RUN pip install -U pip
+RUN pip install pip==23.0.1
 # Last known working version
-RUN pip install poetry
+RUN pip install poetry==1.4.2
 
 COPY poetry.lock pyproject.toml ./
 
-RUN poetry config virtualenvs.create false \
-    && poetry export -f requirements.txt \
-    | pip install -r /dev/stdin  \
-    && poetry debug
+RUN poetry config virtualenvs.create false
+RUN poetry install --without=dev
 
 # Building tree-sitter languages
 COPY docker/scripts/setup_plagiarism.py  ./
@@ -71,11 +69,7 @@ RUN python setup_plagiarism.py
 # Helper image for development dependencies #
 #############################################
 FROM dependencies as dev-dependencies
-RUN poetry export -f requirements.txt --dev \
-    | pip install -r /dev/stdin  \
-    && poetry debug
-
-
+RUN poetry install --with=dev
 
 
 ####################
