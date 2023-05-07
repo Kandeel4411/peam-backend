@@ -33,7 +33,7 @@ db:
 
 # Utilities
 .PHONY: test
-test:
+test: db
 	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} /bin/bash -c "export DJANGO_SETTINGS_MODULE=core.settings.test && \
 	pytest src"
 

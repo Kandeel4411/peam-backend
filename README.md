@@ -24,11 +24,11 @@ Backend repository for the Peam app.
 
 ## Development
 
-- [Install Poetry](https://github.com/python-poetry/poetry) for managing dependencies or just use python's `pip`.
+- [Install Poetry (1.4.2) ](https://github.com/python-poetry/poetry) for managing dependencies or just use python's `pip`.
   - Poetry provides a custom installer that can be ran via
 
     ```bash
-    curl -sSL https://raw.githubusercontent.com/sdispater/poetry/master/get-poetry.py | python
+    curl -sSL https://install.python-poetry.org | python3 - --version 1.4.2
     ```
 
     Alternatively, poetry can be installed via pip/pip3 with `pip install --user poetry` or `pip3 install --user poetry`
