@@ -1,3 +1,8 @@
+COMPOSE := $(shell which docker-compose)
+ifeq ($(COMPOSE),)
+	COMPOSE := docker compose
+endif
+
 COMPOSE_FILE := "docker-compose.dev.yml"
 COMPOSE_CONTAINER_NAME := "peam_backend"
 
@@ -7,46 +12,46 @@ POSTGRES_COMPOSE_SERVICE := "postgres"
 # Building and running
 .PHONY: detached
 detached:
-	docker-compose -f ${COMPOSE_FILE} up -d
+	${COMPOSE} -f ${COMPOSE_FILE} up -d
 
 .PHONY: run
 run:
-	docker-compose -f ${COMPOSE_FILE} up
+	${COMPOSE} -f ${COMPOSE_FILE} up
 
 .PHONY: build
 build:
-	docker-compose -f ${COMPOSE_FILE} build
+	${COMPOSE} -f ${COMPOSE_FILE} build
 
 .PHONY: stop
 stop:
-	docker-compose -f ${COMPOSE_FILE} down
+	${COMPOSE} -f ${COMPOSE_FILE} down
 
 .PHONY: db
 db:
-	docker-compose -f ${COMPOSE_FILE} up -d ${POSTGRES_COMPOSE_SERVICE}
+	${COMPOSE} -f ${COMPOSE_FILE} up -d ${POSTGRES_COMPOSE_SERVICE}
 
 
 # Utilities
 .PHONY: test
 test:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} /bin/bash -c "export DJANGO_SETTINGS_MODULE=core.settings.test && \
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} /bin/bash -c "export DJANGO_SETTINGS_MODULE=core.settings.test && \
 	pytest src"
 
 .PHONY: format
 format:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} black .
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} black .
 
 .PHONY: lint
 lint:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} flake8 .
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} flake8 .
 
 .PHONY: migration
 migration:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py makemigrations
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py makemigrations
 
 .PHONY: migrate
 migrate:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py migrate
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py migrate
 
 .PHONY: prune
 prune: stop
@@ -56,19 +61,19 @@ prune: stop
 # Ease of usage
 .PHONY: shell
 shell:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py shell
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py shell
 
 .PHONY: bash
 bash:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} /bin/bash
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} /bin/bash
 
 .PHONY: fmtlint
 fmtlint:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} black . && flake8 .
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} black . && flake8 .
 
 .PHONY: create-admin-user
 create-admin-user:
-	docker-compose -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py create_admin_user \
+	${COMPOSE} -f ${COMPOSE_FILE} run ${COMPOSE_CONTAINER_NAME} python src/manage.py create_admin_user \
 	--noinput \
 	--username admin \
 	--password admin \
